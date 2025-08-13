@@ -1,6 +1,4 @@
-# api/views.py
 from __future__ import annotations
-from django.contrib.gis.geos import Point
 from django.db import transaction
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action

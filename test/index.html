@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<div id="map" style="width:100%;height:500px;"></div>
+
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=da00b42225255f2fc62fc1bc09793f69"></script>
+<script>
+  var container = document.getElementById('map');
+  var options = {
+    center: new kakao.maps.LatLng(37.5665, 126.9780),  // 서울시청 근처 중심
+    level: 7  // 확대 레벨 (작을수록 확대, 7~8이 서울 전체 보기 적당)
+  };
+  var map = new kakao.maps.Map(container, options);
+</script>`

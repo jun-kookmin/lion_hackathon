@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import List
 
-from django.contrib.gis.geos import Point
 from rest_framework import serializers
 
 from . import models
@@ -10,7 +9,7 @@ from . import models
 
 class PointDictField(serializers.Field):
 
-    def to_representation(self, value: Point | None):
+    def to_representation(self, value: float | None):
         if value is None:
             return None
         return {"lng": value.x, "lat": value.y}
@@ -23,7 +22,7 @@ class PointDictField(serializers.Field):
             lat = float(data["lat"])
         except (TypeError, ValueError):
             raise serializers.ValidationError("lng/lat는 숫자여야 합니다.")
-        return Point(lng, lat, srid=4326)
+        return float(lng, lat, srid=4326)
 
 
 class UserSerializer(serializers.ModelSerializer):

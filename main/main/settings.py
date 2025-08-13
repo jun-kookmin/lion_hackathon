@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    'django.contrib.gis',
     'rest_framework',
     'django_filters',
     'drf_spectacular',
@@ -91,7 +90,7 @@ WSGI_APPLICATION = 'main.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'hackerton',
         'USER': 'postgres',
         'PASSWORD': '950530aA!!',

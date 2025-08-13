@@ -1,5 +1,4 @@
 import uuid as _uuid
-from django.contrib.gis.db import models as gis_models
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -43,34 +42,31 @@ class Tag(models.Model):
         )
 
 
-
 class Data(models.Model):
-    point = gis_models.PointField(_("좌표(lon/lat)"), geography=True) # 위도 경도
-    address = models.CharField(_("주소"), max_length=255) # 도로명 주소 
-    region = models.CharField(_("지역명"), max_length=100, blank=True) # 법정동명
-
-    allow_business_types = models.ManyToManyField(
-        BusinessType,
-        blank=True,                    
-        related_name="candidate_spots",
-    )
-    tags = models.ManyToManyField(
-        Tag,
-        blank=True,                 
-        related_name="candidate_spots",
-    )
-
+    uuid = models.CharField(_("상가업소번호"), max_length=50)
+    business_code = models.CharField(_("분류코드"), max_length=100)
+    business_types = models.CharField(_("분류명"), max_length=100)
+    address = models.CharField(_("주소"), max_length=255)
+    region_code = models.CharField(_("법정동코드"), max_length=100)
+    region = models.CharField(_("법정동명"), max_length=100)
+    floor = models.PositiveSmallIntegerField(_("층정보"), null=True)
+    latitude = models.FloatField(_("위도"))
+    longitude = models.FloatField(_("경도"))
     monthly_rent = models.PositiveIntegerField(_("월세(만원)"))
     deposit = models.PositiveIntegerField(_("보증금(만원)"), default=0)
     daily_footfall_avg = models.PositiveIntegerField(_("일평균 유동인구"), default=0)
 
+    tags = models.ManyToManyField(
+            Tag,
+            blank=True,
+            null=True,                 
+            related_name="candidate_spots",
+        )
+    
     class Meta:
-        indexes = [
-            gis_models.Index(fields=["point"]),
-            models.Index(fields=["monthly_rent"]),
-        ]
-        verbose_name = _("후보 입지")
-        verbose_name_plural = _("후보 입지 목록")
+            ordering = ['id']
+            verbose_name = _("후보 입지")
+            verbose_name_plural = _("후보 입지 목록")
 
 
 class AnalysisRequest(models.Model):
@@ -98,13 +94,13 @@ class AnalysisRequest(models.Model):
         max_length=1, 
         choices=PLAN_CHOICES
         )
-    # 위도 경도 
-    point = gis_models.PointField(
-        _("입력 좌표(lon/lat)"), 
-        geography=True, 
+    # 위도 
+    latitude = models.FloatField(_("입력 좌표(lon/lat)"), 
         null=True, 
         blank=True
         )
+    # 경도 
+    longitude = models.FloatField(_("입력 좌표(lon/lat)"), )
     # 도로명
     address = models.CharField(
         _("입력 주소"), 
