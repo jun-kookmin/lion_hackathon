@@ -45,10 +45,8 @@ class Data(models.Model):
 
 
 class AnalysisRequest(models.Model):
-    PLAN_CHOICES = [("A", "Plan A"), ("B", "Plan B")]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="analysis_requests")
     business_type = models.ForeignKey(BusinessType, null=True, blank=True, on_delete=models.SET_NULL, related_name="analysis_requests")
-    plan = models.CharField(_("플랜"), max_length=1, choices=PLAN_CHOICES)
     latitude = models.FloatField(_("입력 좌표(lon/lat)"), null=True, blank=True)
     longitude = models.FloatField(_("입력 좌표(lon/lat)"))
     address = models.CharField(_("입력 주소"), max_length=255, null=True, blank=True)
@@ -59,8 +57,6 @@ class AnalysisRequest(models.Model):
         verbose_name = _("분석 요청")
         verbose_name_plural = _("분석 요청 내역")
 
-    def __str__(self):
-        return f"분석요청 {self.id} ({self.get_plan_display()})"
 
 
 class TypeRecommendation(models.Model):

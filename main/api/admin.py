@@ -19,22 +19,20 @@ class BusinessTypeAdmin(admin.ModelAdmin):
 
 @admin.register(AnalysisRequest)
 class AnalysisRequestAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "business_type", "plan", "latitude", "longitude", "created_at")
-    list_filter = ("plan", "created_at")
+    list_display = ("id", "user", "business_type", "latitude", "longitude", "created_at")
+    list_filter = ("created_at",)
     search_fields = ("address",)
 
 
 @admin.register(TypeRecommendation)
 class TypeRecommendationAdmin(admin.ModelAdmin):
-    list_display = ("id", "analysis_request", "business_type", "score", "check_save", "created_at")
-    list_filter = ("check_save",)
+    list_display = ("id", "analysis_request", "business_type", "score", "check_save", "description", "created_at")
     search_fields = ("description",)
 
 
 @admin.register(SpotRecommendation)
 class SpotRecommendationAdmin(admin.ModelAdmin):
-    list_display = ("id", "analysis_request", "business_type", "score", "check_save", "created_at")
-    list_filter = ("check_save",)
+    list_display = ("id", "analysis_request", "business_type", "score", "check_save", "description","created_at")
     search_fields = ("description",)
 
 

@@ -48,22 +48,6 @@ def _int_or_none(x):
     except:
         return None
     
-def _to_five_point_scaler(values: list[float]):
-    if not values:
-        return lambda x: "0.00"
-    vmin = min(values)
-    vmax = max(values)
-    denom = vmax - vmin
-    def _scale(x: float) -> str:
-        if denom <= 1e-12:
-            val = 5.0
-        else:
-            n = (x - vmin) / denom
-            n = max(0.0, min(1.0, n))
-            val = n * 5.0
-        return f"{val:.2f}"
-    return _scale
-
 def haversine_km(lat1, lon1, lat2, lon2):
     R = 6371.0
     dlat = math.radians(lat2 - lat1)
@@ -213,7 +197,7 @@ class DataViewSet(BaseModelViewSet):
 class AnalysisRequestViewSet(BaseModelViewSet):
     queryset = AnalysisRequest.objects.select_related("user", "business_type").all()
     serializer_class = AnalysisRequestSerializer
-    filterset_fields = ["plan", "user", "business_type"]
+    filterset_fields = ["user", "business_type"]
     search_fields = ["address", "user__uuid"]
     ordering_fields = ["id", "created_at"]
 
@@ -313,9 +297,7 @@ class FavoriteSpotViewSet(BaseModelViewSet):
     ordering = ["-created_at"]
 
 # Endpoints (추천 전용):
-# GET /api/v1/recommend/types?lat=&lon=&radius_km=3&save=&request_id=
-# Endpoints (추천 전용):
-# GET /api/v1/recommendations/types/?lat=&lon=&radius_km=3
+# GET /api/v1/recommendations/types/?lat=37.57&lon=126.98&radius_km=3&request_id=1   
 class RecommendBusinessTypes(APIView):
     TARGET_TYPE_COUNT = 3
 
@@ -328,130 +310,124 @@ class RecommendBusinessTypes(APIView):
 
         radius_km = _float_or_default(request.query_params.get("radius_km", 3.0), 3.0)
         radius_km = max(0.1, min(50.0, radius_km))
+        req_id = request.query_params.get("request_id")
 
-        # 후보 수집 (반경 확장)
-        def fetch(radius) -> List[Data]:
-            lat_deg = radius / 111.0
-            lon_deg = radius / (111.320 * max(0.0001, math.cos(math.radians(lat))))
-            qs: QuerySet[Data] = Data.objects.filter(
-                latitude__gte=lat - lat_deg, latitude__lte=lat + lat_deg,
-                longitude__gte=lon - lon_deg, longitude__lte=lon + lon_deg,
-            ).only("id","code","business_types","address","latitude","longitude","monthly_rent","deposit","daily_footfall_avg","floor")
-            return list(qs)
+        # 후보 추출 (반경 내)
+        lat_deg = radius_km / 111.0
+        lon_deg = radius_km / (111.320 * max(0.0001, math.cos(math.radians(lat))))
+        qs: QuerySet[Data] = Data.objects.filter(
+            latitude__gte=lat - lat_deg, latitude__lte=lat + lat_deg,
+            longitude__gte=lon - lon_deg, longitude__lte=lon + lon_deg,
+        ).only(
+            "id", "business_types", "address", "latitude", "longitude",
+            "monthly_rent", "deposit", "daily_footfall_avg", "floor"
+        )[:10]
 
-        grow = [radius_km, 5, 10, 20, 30]
-        candidates: List[Data] = []
-        for r in grow:
-            candidates = fetch(r)
-            if candidates:
-                break
+        candidates = list(qs)
         if not candidates:
             return Response({"results": []})
 
-        # 특징 계산 (유동인구→전환율 적용 방문자 추정)
+        # 특징 계산
         enriched = []
         for c in candidates:
-            d_km = haversine_km(lat, lon, c.latitude, c.longitude)
-            btype = (c.business_types or "").strip() or "미분류"
-            rate  = get_visit_rate(btype)
-            foot  = float(c.daily_footfall_avg or 0.0)
-            visit_est = foot * rate
             enriched.append({
                 "obj": c,
-                "type": btype,
-                "distance_km": d_km,
-                "visit_est": visit_est,
-                "rate": rate,
+                "type": (c.business_types or "").strip() or "미분류",
+                "distance_km": haversine_km(lat, lon, c.latitude, c.longitude),
+                "foot": float(c.daily_footfall_avg or 0.0),
                 "rent": float(c.monthly_rent or 0.0),
-                "dep":  float(c.deposit or 0.0),
+                "dep": float(c.deposit or 0.0),
                 "floor": c.floor,
             })
 
+        # 정규화 범위
         dmin, dmax = minmax([e["distance_km"] for e in enriched])
-        vmin, vmax = minmax([e["visit_est"]   for e in enriched])
-        rmin, rmax = minmax([e["rent"]        for e in enriched])
-        pmin, pmax = minmax([e["dep"]         for e in enriched])
+        fmin, fmax = minmax([e["foot"] for e in enriched])
+        rmin, rmax = minmax([e["rent"] for e in enriched])
+        pmin, pmax = minmax([e["dep"] for e in enriched])
 
-        # 가중치
-        W_VISIT, W_DIST, W_RENT, W_DEP = 0.42, 0.25, 0.23, 0.10
+        W_FOOT, W_DIST, W_RENT, W_DEP = 0.42, 0.25, 0.23, 0.10
 
-        # 점수화 (raw)
+        # 개별 점수
         items = []
         for e in enriched:
-            visit_n = norm(e["visit_est"], vmin, vmax)
-            dist_n  = 1.0 - norm(e["distance_km"], dmin, dmax)
-            rent_n  = 1.0 - norm(e["rent"], rmin, rmax)
-            dep_n   = 1.0 - norm(e["dep"],  pmin, pmax)
+            foot_n = norm(e["foot"], fmin, fmax)
+            dist_n = 1.0 - norm(e["distance_km"], dmin, dmax)
+            rent_n = 1.0 - norm(e["rent"], rmin, rmax)
+            dep_n = 1.0 - norm(e["dep"], pmin, pmax)
+            floor_bonus = 0.03 if e["floor"] == 1 else (0.015 if e["floor"] in (2, 3) else 0.0)
 
-            floor_bonus = 0.0
-            if isinstance(e["floor"], int):
-                if e["floor"] == 1: floor_bonus = 0.03
-                elif 2 <= e["floor"] <= 3: floor_bonus = 0.015
+            score = (W_FOOT*foot_n + W_DIST*dist_n + W_RENT*rent_n + W_DEP*dep_n) + floor_bonus
+            items.append({"type": e["type"], "obj": e["obj"], "score": round(score * 5.0, 2), "distance_km": e["distance_km"]})
 
-            raw = (W_VISIT*visit_n + W_DIST*dist_n + W_RENT*rent_n + W_DEP*dep_n) + floor_bonus
-            items.append({
-                "type": e["type"],
-                "score_raw": float(raw),
-                "distance_km": e["distance_km"],
-                "rate": e["rate"],
-                "obj": e["obj"],
-            })
-
-        # 업종별 집계 (raw agg)
+        # 업종별 그룹핑
         by_type: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-        for it in items:
-            by_type[it["type"]].append(it)
+        for row in items:
+            by_type[row["type"]].append(row)
 
-        rows = []
-        for t, rows_items in by_type.items():
-            rows_items.sort(key=lambda x: x["score_raw"], reverse=True)
-            topk = rows_items[:3]
-            base = sum(r["score_raw"] for r in topk) / max(1, len(topk))
-            bonus = math.log(1 + len(rows_items)) * 0.02
-            agg_raw = base + bonus
+        results = []
+        for t, rows in by_type.items():
+            rows.sort(key=lambda x: x["score"], reverse=True)
+            topk = rows[:3]
 
-            first = topk[0] if topk else None
-            daily_foot = _int_or_none(first["obj"].daily_footfall_avg) if first else None
-            rate = first["rate"] if first else None
-            est_visitors = _int_or_none((daily_foot or 0) * (rate or 0)) if (daily_foot is not None and rate is not None) else None
+            # 대표 매물 1개
+            spot_dict = None
+            if topk:
+                o = topk[0]["obj"]
+                spot_dict = {
+                    "id": o.id,
+                    "address": o.address,
+                    "latitude": o.latitude,
+                    "longitude": o.longitude,
+                    "monthly_rent": o.monthly_rent,
+                    "deposit": o.deposit,
+                    "daily_footfall_avg": o.daily_footfall_avg,
+                    "floor": o.floor,
+                }
 
             why = safe_explain({
                 "business_type": t,
-                "distance_km": first["distance_km"] if first else None,
-                "daily_footfall_avg": daily_foot,
-                "assumed_visit_rate": rate,
-                "estimated_visitors": est_visitors,
-                "monthly_rent": _int_or_none(first["obj"].monthly_rent) if first else None,
-                "deposit": _int_or_none(first["obj"].deposit) if first else None,
-                "floor": first["obj"].floor if first else None,
+                "distance_km": topk[0]["distance_km"] if topk else None,
+                "daily_footfall_avg": _int_or_none(topk[0]["obj"].daily_footfall_avg) if topk else None,
+                "monthly_rent": _int_or_none(topk[0]["obj"].monthly_rent) if topk else None,
+                "deposit": _int_or_none(topk[0]["obj"].deposit) if topk else None,
+                "floor": topk[0]["obj"].floor if topk else None,
             })
 
-            rows.append({
+            avg_score = sum(r["score"] for r in topk) / max(1, len(topk))
+            results.append({
                 "business_type": t,
-                "score_raw": float(agg_raw),
-                "count": len(rows_items),
+                "score": round(avg_score, 2),
+                "count": len(rows),
+                "spot": spot_dict,
                 "why": why,
             })
 
-        # 5점 스케일로 변환
-        scaler = _to_five_point_scaler([r["score_raw"] for r in rows])
-        results = []
-        for r in rows:
-            results.append({
-                "business_type": r["business_type"],
-                "score": scaler(r["score_raw"]),  # "x.xx"
-                "count": r["count"],
-                "why": r["why"],
-            })
-
-        # 정렬 및 상위 N
-        results.sort(key=lambda x: float(x["score"]), reverse=True)
+        results.sort(key=lambda x: x["score"], reverse=True)
         top = results[: self.TARGET_TYPE_COUNT]
+
+        # DB 저장
+        if req_id:
+            try:
+                req = AnalysisRequest.objects.get(id=req_id)
+                with transaction.atomic():
+                    for row in top:
+                        bt, _ = BusinessType.objects.get_or_create(name=row["business_type"])
+                        TypeRecommendation.objects.create(
+                            analysis_request=req,
+                            business_type=bt,
+                            score=row["score"],
+                            description=row["why"],
+                            check_save=False,
+                        )
+            except AnalysisRequest.DoesNotExist:
+                pass
+
         return Response({"results": top})
-    
-# http://127.0.0.1:8000/api/v1/recommendations/spots/?type=카페
-# Endpoints (추천 전용):
-# GET /api/v1/recommendations/spots/?type=(또는 business_type=)&lat=&lon=&radius_km=5
+
+
+#   
+# GET  /api/v1/recommendations/spots/?type=카페&request_id=1   
 class RecommendSpotsByType(APIView):
     TARGET_COUNT = 3
 
@@ -468,6 +444,9 @@ class RecommendSpotsByType(APIView):
         radius_km = _float_or_default(request.query_params.get("radius_km", 5.0), 5.0)
         radius_km = max(0.1, min(50.0, radius_km))
 
+        # save_flag = str(request.query_params.get("save", "")).lower() in ("1","true","yes")
+        req_id = request.query_params.get("request_id")
+
         qs: QuerySet[Data] = Data.objects.filter(business_types__icontains=qtype)
         if lat is not None and lon is not None:
             lat_deg = radius_km / 111.0
@@ -476,52 +455,50 @@ class RecommendSpotsByType(APIView):
                 latitude__gte=lat - lat_deg, latitude__lte=lat + lat_deg,
                 longitude__gte=lon - lon_deg, longitude__lte=lon + lon_deg,
             )
-        qs = qs.only("id","code","business_types","address","region","latitude","longitude","monthly_rent","deposit","daily_footfall_avg","floor")
+        qs = qs.only("id","code","business_types","address","region","latitude","longitude",
+                     "monthly_rent","deposit","daily_footfall_avg","floor")
 
         candidates = list(qs[:10000])
         if not candidates:
             return Response({"results": []})
 
-        rate = get_visit_rate(qtype)
-
         enriched = []
         for c in candidates:
             d_km = (haversine_km(lat, lon, c.latitude, c.longitude) if lat is not None and lon is not None else 0.0)
             foot = float(c.daily_footfall_avg or 0.0)
-            visit_est = foot * rate
-
             enriched.append({
                 "obj": c,
                 "distance_km": d_km,
-                "visit_est": visit_est,
+                "foot": foot,
                 "rent": float(c.monthly_rent or 0.0),
                 "dep":  float(c.deposit or 0.0),
                 "floor": c.floor,
             })
 
         dmin, dmax = minmax([e["distance_km"] for e in enriched])
-        vmin, vmax = minmax([e["visit_est"]   for e in enriched])
-        rmin, rmax = minmax([e["rent"]        for e in enriched])
-        pmin, pmax = minmax([e["dep"]         for e in enriched])
+        fmin, fmax = minmax([e["foot"] for e in enriched])
+        rmin, rmax = minmax([e["rent"] for e in enriched])
+        pmin, pmax = minmax([e["dep"]  for e in enriched])
 
         if lat is not None and lon is not None:
-            W_VISIT, W_DIST, W_RENT, W_DEP = 0.42, 0.23, 0.25, 0.10
+            W_FOOT, W_DIST, W_RENT, W_DEP = 0.42, 0.23, 0.25, 0.10
         else:
-            W_VISIT, W_RENT, W_DEP, W_DIST = 0.55, 0.30, 0.15, 0.0
+            W_FOOT, W_RENT, W_DEP, W_DIST = 0.55, 0.30, 0.15, 0.0
 
         rows = []
         for e in enriched:
-            visit_n = norm(e["visit_est"], vmin, vmax)
-            rent_n  = 1.0 - norm(e["rent"], rmin, rmax)
-            dep_n   = 1.0 - norm(e["dep"],  pmin, pmax)
-            dist_n  = (1.0 - norm(e["distance_km"], dmin, dmax)) if W_DIST > 0 else 0.0
+            foot_n = norm(e["foot"], fmin, fmax)
+            rent_n = 1.0 - norm(e["rent"], rmin, rmax)
+            dep_n  = 1.0 - norm(e["dep"],  pmin, pmax)
+            dist_n = (1.0 - norm(e["distance_km"], dmin, dmax)) if W_DIST > 0 else 0.0
 
             floor_bonus = 0.0
             if isinstance(e["floor"], int):
                 if e["floor"] == 1: floor_bonus = 0.03
                 elif 2 <= e["floor"] <= 3: floor_bonus = 0.015
 
-            raw = (W_VISIT*visit_n + W_DIST*dist_n + W_RENT*rent_n + W_DEP*dep_n) + floor_bonus
+            score = (W_FOOT*foot_n + W_DIST*dist_n + W_RENT*rent_n + W_DEP*dep_n) + floor_bonus
+            final_score = round(float(score) * 5.0, 2)   # ✅ 5점 만점 변환
 
             c = e["obj"]
             rows.append({
@@ -535,20 +512,13 @@ class RecommendSpotsByType(APIView):
                 "monthly_rent": c.monthly_rent,
                 "deposit": c.deposit,
                 "daily_footfall_avg": c.daily_footfall_avg,
-                "assumed_visit_rate": rate,
-                "estimated_visitors": _int_or_none(e["visit_est"]),
                 "floor": c.floor,
                 "distance_km": round(e["distance_km"], 3) if W_DIST > 0 else None,
-                "score_raw": float(raw),
+                "score": final_score,
             })
 
-        scaler = _to_five_point_scaler([r["score_raw"] for r in rows])
-        for r in rows:
-            r["score"] = scaler(r["score_raw"])  
-
-        rows.sort(key=lambda x: x["score_raw"], reverse=True)
+        rows.sort(key=lambda x: x["score"], reverse=True)
         top = rows[: self.TARGET_COUNT]
-
 
         results = []
         for rec in top:
@@ -556,15 +526,32 @@ class RecommendSpotsByType(APIView):
                 "business_type": qtype or rec["business_type"],
                 "distance_km": rec["distance_km"],
                 "daily_footfall_avg": _int_or_none(rec["daily_footfall_avg"]),
-                "assumed_visit_rate": rec["assumed_visit_rate"],
-                "estimated_visitors": rec["estimated_visitors"],
                 "monthly_rent": _int_or_none(rec["monthly_rent"]),
                 "deposit": _int_or_none(rec["deposit"]),
                 "floor": rec["floor"],
                 "address": rec["address"],
             })
-            rec_out = {k: v for k, v in rec.items() if k != "score_raw"}
-            rec_out["why"] = why
+            rec_out = {**rec, "why": why}
             results.append(rec_out)
+
+        if req_id:
+            try:
+                req = AnalysisRequest.objects.get(id=req_id)
+                bt = BusinessType.objects.filter(name=qtype).first()
+                if not bt:
+                    bt = BusinessType.objects.create(name=qtype)
+
+                with transaction.atomic():
+                    for row in results:
+                        SpotRecommendation.objects.create(
+                            analysis_request=req,
+                            spot_id=row["id"],
+                            business_type=bt,
+                            score=row["score"],
+                            description=row["why"],
+                            check_save=False,
+                        )
+            except AnalysisRequest.DoesNotExist:
+                pass
 
         return Response({"results": results})

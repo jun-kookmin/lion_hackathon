@@ -1,10 +1,14 @@
-# api/services/llm_openai.py
 from __future__ import annotations
 import os, json
 from openai import OpenAI
-from views import _int_or_none
 
-client = OpenAI()  # OPENAI_API_KEY를 .env에서 읽음
+def int_or_none(v):
+    try:
+        return int(v)
+    except Exception:
+        return None
+
+client = OpenAI() 
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 SYSTEM_KO = (
@@ -27,7 +31,7 @@ def _fallback(f: dict) -> str:
         parts.append(f"일 유동인구 {f['daily_footfall_avg']:,}명")
 
     vr = f.get("assumed_visit_rate")
-    ev = _int_or_none(f.get("estimated_visitors"))
+    ev = int_or_none(f.get("estimated_visitors"))
     if vr is not None and ev is not None:
         parts.append(f"(유동인구는 보행량이며, 전환율 {vr*100:.1f}% 가정 시 방문자 {ev:,}명 추정)")
 
@@ -42,7 +46,7 @@ def explain(features: dict, lang: str = "ko") -> str:
 - 각 항목은 정확히 2문장
 - 과장 및 임의 추정/계산(예: 매출, 순이익) 금지. 주어진 수치만 언급
 - 데이터가 없으면 '데이터 없음'이라고 적기
-- 전체는 900자 이내
+- 전체는 800자 이내
 
 형식:
 1. 추천 사유
@@ -62,7 +66,7 @@ JSON:
                 {"role": "user",   "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=300,   # 🔼 충분히 늘림
+            max_tokens=200,   
         )
         return (resp.choices[0].message.content or "").strip()
     except Exception:

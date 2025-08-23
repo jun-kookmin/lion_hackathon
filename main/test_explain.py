@@ -1,7 +1,11 @@
 import os
 from api.services.llm_openai import explain
 
-# 테스트용 입력
+import os, django
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings.devel")
+django.setup()
+
 features = {
     "business_type": "카페",
     "distance_km": 0.42,
