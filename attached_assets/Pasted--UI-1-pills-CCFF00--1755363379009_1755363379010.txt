@@ -1,0 +1,393 @@
+면적 필터 UI 사양(모바일 웹)
+1) 구성 요소
+
+상단 칩 탭(pills)
+
+좌: 면적(활성 시 네온 옐로우), 우: 옵션(기본 시안)
+
+활성 칩: 배경 #CCFF00, 텍스트/아이콘 #111, 화살표 ∨ → ∧로 회전
+
+비활성 칩: 배경 #00E6FF, 텍스트 #fff
+
+칩은 sticky(상단 고정)로 스크롤해도 항상 보이게
+
+섹션 헤더
+
+제목: 면적(전용면적)
+
+우측 링크: 전체(클릭 시 최소~최대 범위로 즉시 확장)
+
+우측 아이콘+버튼: 평 변환(㎡↔평 토글)
+
+범위 슬라이더(듀얼 핸들)
+
+트랙 비활성: #DDE3E9
+
+선택 구간(fill): 네온 라임 #CCFF00
+
+핸들: 별 모양(시각 22px), 터치 타깃 44px 보장
+
+하단 눈금 라벨: 중앙에 현재 값(예: 66㎡, 165㎡) 표시
+
+경계 라벨: 좌 최소, 우 최대
+
+하단 버튼
+
+좌: 초기화(텍스트 버튼/회색) → 면적 범위 및 단위 초기화
+
+우: 적용하기(프라이머리 시안 pill) → 선택 값 적용 후 닫기
+
+2) 동작/상태
+
+칩 탭
+
+탭 전환: 면적 활성 시 면적 섹션이 펼쳐짐, 옵션 누르면 옵션 섹션으로 이동
+
+요약 배지: 사용자가 범위를 변경하면 면적 칩 오른쪽에 66–165㎡ 같은 요약 텍스트 노출
+
+슬라이더
+
+min, max, step은 파라미터(예: min=33, max=330, step=1)
+
+좌/우 핸들 교차 금지, minGap(예: 5㎡) 보장
+
+드래그 중 값은 실시간으로 라벨에 반영(결과 조회는 ‘적용하기’로 트리거)
+
+전체 클릭 시 즉시 [min,max]로 리셋 + 칩 요약 갱신
+
+단위 변환(㎡ ↔ 평)
+
+1평 = 3.305785㎡
+
+㎡: 정수 반올림 / 평: 소수 1자리 표기(예: 20.5평)
+
+변환 시 범위/요약/라벨 동시 업데이트
+
+접근성/피드백
+
+포커스 링: outline 3px #E1FF00
+
+칩/버튼 press: scale(0.98) 100ms
+
+슬라이더 핸들 키보드 조작 지원(좌우 화살표)
+
+3) 색/토큰
+--brand:   #CCFF00; /* 네온 옐로우(활성) */
+--cyan:    #00E6FF; /* 기본 액션 */
+--ink:     #111111;
+--muted:   #DDE3E9; /* 트랙 비활성 */
+--bg:      #FFFFFF;
+
+4) 상태 관리(예시)
+type Unit = 'sqm' | 'pyeong';
+interface AreaFilterState {
+  min: number; max: number;      // 실제 단위(㎡)로 보관
+  viewUnit: Unit;                // 표시 단위
+  minGap: number;                // ㎡ 기준 최소 간격
+}
+
+5) 이벤트 플로우
+
+면적 칩 클릭 → 면적 섹션 스크롤(scrollIntoView) + 칩 활성화
+
+슬라이더 드래그 → 로컬 상태만 갱신, 칩 요약 실시간 반영
+
+평 변환 → 단위 토글 및 숫자/라벨/요약 변환
+
+전체 → [min,max]로 즉시 설정
+
+초기화 → 기본 상태로 복원
+
+적용하기 → 상위에 {type:'APPLY_AREA', payload:{min,max}} 디스패치, 시트 닫기
+
+6) 구현 스니펫(바닐라)
+<div class="filterTabs">
+  <button id="pillArea" class="pill is-active">면적 <span id="badgeArea" class="summary"></span> <span class="chev">⌄</span></button>
+  <button id="pillOpt"  class="pill">옵션 <span class="chev">⌄</span></button>
+</div>
+
+<section id="secArea">
+  <header class="head">
+    <h3>면적(전용면적)</h3>
+    <div class="actions">
+      <button id="unitToggle">⟳ 평 변환</button>
+      <button id="fullRange" class="link">전체</button>
+    </div>
+  </header>
+
+  <div class="range">
+    <input id="rMin" type="range" min="33" max="330" step="1" value="66">
+    <input id="rMax" type="range" min="33" max="330" step="1" value="165">
+    <div class="track"><span class="fill" id="fill"></span></div>
+  </div>
+
+  <div class="labels"><span>최소</span><span id="mid">165㎡</span><span>최대</span></div>
+
+  <div class="cta">
+    <button id="reset" class="btn--ghost">초기화</button>
+    <button id="apply" class="btn--primary">적용하기</button>
+  </div>
+</section>
+
+const state = { min:66, max:165, minGap:5, viewUnit:'sqm', base:{min:33,max:330} };
+
+const rMin = r('rMin'), rMax = r('rMax'), fill = r('fill'), badge = r('badgeArea'), mid = r('mid');
+
+function clamp(){
+  if (+rMin.value > +rMax.value - state.minGap) rMin.value = +rMax.value - state.minGap;
+  if (+rMax.value < +rMin.value + state.minGap) rMax.value = +rMin.value + state.minGap;
+}
+function toUnit(v){
+  return state.viewUnit==='sqm' ? `${Math.round(v)}㎡` : `${Math.round((v/3.305785)*10)/10}평`;
+}
+function syncUI(){
+  const min = +rMin.value, max = +rMax.value;
+  const pct = v => ( (v-state.base.min)/(state.base.max-state.base.min) )*100;
+  fill.style.left  = pct(min)+'%';
+  fill.style.right = (100-pct(max))+'%';
+  badge.textContent = `${toUnit(min)}–${toUnit(max)}`;
+  badge.parentElement.classList.add('has-value');
+  mid.textContent = toUnit( (min+max)/2 );
+}
+['input','change'].forEach(ev=>{
+  rMin.addEventListener(ev, ()=>{ clamp(); syncUI(); });
+  rMax.addEventListener(ev, ()=>{ clamp(); syncUI(); });
+});
+r('unitToggle').onclick = ()=>{ state.viewUnit = state.viewUnit==='sqm'?'pyeong':'sqm'; syncUI(); };
+r('fullRange').onclick   = ()=>{ rMin.value = state.base.min; rMax.value = state.base.max; syncUI(); };
+r('reset').onclick       = ()=>{ rMin.value = 66; rMax.value = 165; state.viewUnit='sqm'; syncUI(); };
+r('apply').onclick       = ()=>{ /* dispatch {min:+rMin.value, max:+rMax.value} */ };
+
+syncUI();
+function r(id){ return document.getElementById(id); }
+
+7) 수용 기준(AC)
+
+ 칩 sticky, 스크롤해도 항상 노출
+
+ 면적 범위 변경 시 칩에 min–max 요약 표시
+
+ ㎡↔평 전환 시 숫자/요약/라벨 동시 반영(평 1자리)
+
+ 전체, 초기화, 적용하기 동작 명확
+
+ 슬라이더 핸들 터치 타깃 44px 이상, 키보드 조작 가능
+
+ 시각 톤: 활성 네온 #CCFF00, 기본 시안 #00E6FF
+
+이 텍스트 그대로 개발자에게 전달하면, “무엇을/어떻게/언제”가 명확해서 바로 구현 들어갈 수 있어요.
+
+나의 말:
+아니야 전체 누르는게 아니라 길이 조정했을 떄 "99m2 부터"라고 이런 식으로 범위 나타내는거야 평 전환 하면 "최소", "20평", "50평" "최대" 이걸로 바뀌고 카카오 맵 api랑 연결해야하는게조금 문제긴해 나중에 커서로 할 계획이긴 했는데 
+ChatGPT의 말:
+28s 동안 생각함
+
+오케이! 요구대로 정리해서 사양 + 바로 붙여 쓸 코드까지 줄게.
+핵심은:
+
+전체 버튼 없음
+
+슬라이더를 움직일 때만 버블로 → 99㎡부터 / 165㎡까지 처럼 보여주기
+
+평 전환 시 틱 라벨을 딱 이렇게 고정: 최소 · 20평 · 50평 · 최대
+
+카카오맵 API는 나중에 연결할 수 있게 **훅 함수(onAreaChange)**만 마련
+
+UI 사양(업데이트)
+
+상단 칩: 면적(활성 네온), 옵션(기본 시안) – sticky 유지
+
+섹션 헤더: 면적(전용면적) / 우측에 평 변환 토글만 (※ 전체 제거)
+
+듀얼 슬라이더
+
+트랙 비활성 #DDE3E9, 선택 구간(fill) #CCFF00
+
+핸들: 별(시각 22px), 터치 타깃 44px
+
+드래그 중 핸들 위에 버블:
+
+왼쪽 핸들: NN㎡부터 또는 NN.N평부터
+
+오른쪽 핸들: NN㎡까지 또는 NN.N평까지
+
+틱 라벨
+
+㎡ 모드: 최소 · 66㎡ · 165㎡ · 최대
+
+평 모드: 최소 · 20평 · 50평 · 최대 (고정)
+
+요약 배지: 칩 오른쪽에 66–165㎡ 또는 20.0–50.0평
+
+적용/초기화 버튼은 그대로
+
+이벤트 훅: 값 변경 시 지연 호출 onAreaChange(minSqm, maxSqm) -> 여기서 카카오맵에 연결
+
+마크업 (핵심만)
+<div class="tabs sticky">
+  <button id="tabArea" class="pill is-active">면적 <span id="badgeArea" class="summary"></span></button>
+  <button id="tabOpt" class="pill">옵션</button>
+</div>
+
+<section id="secArea" class="area">
+  <header class="head">
+    <h3>면적(전용면적)</h3>
+    <button id="unitToggle" class="link">평 변환</button>
+  </header>
+
+  <div class="ticks">
+    <span id="t0">최소</span><span id="t1"></span><span id="t2"></span><span id="t3">최대</span>
+  </div>
+
+  <div class="range">
+    <input id="rMin" type="range" min="33" max="330" step="1" value="66">
+    <input id="rMax" type="range" min="33" max="330" step="1" value="165">
+    <div class="track"><span id="fill" class="fill"></span></div>
+
+    <!-- 드래그 버블 -->
+    <div id="bubbleMin" class="bubble"></div>
+    <div id="bubbleMax" class="bubble"></div>
+  </div>
+
+  <div class="cta">
+    <button id="reset" class="btn ghost">초기화</button>
+    <button id="apply" class="btn primary">적용하기</button>
+  </div>
+</section>
+
+스타일(요점)
+:root{ --brand:#CCFF00; --cyan:#00E6FF; --ink:#111; --muted:#DDE3E9; }
+.sticky{ position:sticky; top:56px; background:#fff; z-index:10; padding:8px 16px; display:flex; gap:10px; }
+.pill{ border:0; border-radius:999px; padding:10px 14px; font-weight:900; background:var(--cyan); color:#fff; }
+.pill.is-active{ background:var(--brand); color:var(--ink); }
+.summary{ margin-left:6px; padding:2px 8px; border-radius:999px; background:rgba(0,0,0,.12); }
+
+.area .head{ display:flex; justify-content:space-between; align-items:center; padding:12px 4px; }
+.link{ background:none; border:0; color:#666; font-weight:900; }
+
+.ticks{ display:flex; justify-content:space-between; margin:6px 2px 8px; color:#777; font-weight:900; }
+.range{ position:relative; height:44px; }
+.track{ position:absolute; left:0; right:0; top:50%; height:6px; transform:translateY(-50%); background:var(--muted); border-radius:999px; }
+.fill{ position:absolute; left:20%; right:40%; top:0; bottom:0; background:var(--brand); border-radius:999px; }
+
+input[type=range]{ position:absolute; left:0; right:0; width:100%; top:50%; transform:translateY(-50%); -webkit-appearance:none; background:transparent; pointer-events:auto; }
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
+  background: #111; /* 별 마스크 */
+  -webkit-mask:url('/public/img/star-solid.svg') center/contain no-repeat;
+  mask:url('/public/img/star-solid.svg') center/contain no-repeat;
+}
+input[type=range]::-webkit-slider-runnable-track{ height:6px; background:transparent; }
+
+.bubble{
+  position:absolute; padding:6px 10px; border-radius:10px; background:#111; color:#fff;
+  font-weight:900; font-size:12px; transform:translate(-50%,-34px); opacity:0; pointer-events:none; transition:opacity .12s;
+}
+.bubble.show{ opacity:1; }
+.btn.primary{ background:var(--cyan); color:#fff; border-radius:14px; padding:12px 16px; font-weight:900; border:0; }
+.btn.ghost{ background:transparent; border:0; color:#444; font-weight:900; }
+
+스크립트
+const U = {
+  toPyeong: sqm => Math.round((sqm/3.305785)*10)/10, // 1자리
+  toSqm    : py => Math.round(py*3.305785),          // 정수
+  fmt(v, unit){ return unit==='sqm' ? `${Math.round(v)}㎡` : `${U.toPyeong(v)}평`; }
+};
+
+const rMin = $('#rMin'), rMax = $('#rMax'), fill = $('#fill');
+const bArea = $('#badgeArea'), unitBtn = $('#unitToggle');
+const t0 = $('#t0'), t1 = $('#t1'), t2 = $('#t2'), t3 = $('#t3');
+const bubMin = $('#bubbleMin'), bubMax = $('#bubbleMax');
+
+const state = { unit:'sqm', baseMin:33, baseMax:330, minGap:5 };
+
+function clamp(){
+  if(+rMin.value > +rMax.value - state.minGap) rMin.value = +rMax.value - state.minGap;
+  if(+rMax.value < +rMin.value + state.minGap) rMax.value = +rMin.value + state.minGap;
+}
+function fillPos(){
+  const L = +rMin.value, R = +rMax.value;
+  const pct = v => ( (v-state.baseMin) / (state.baseMax-state.baseMin) ) * 100;
+  fill.style.left  = pct(L)+'%'; fill.style.right = (100-pct(R))+'%';
+  bArea.textContent = `${U.fmt(L,state.unit)}–${U.fmt(R,state.unit)}`;
+}
+function showBubble(which){
+  const el = which==='min'?bubMin:bubMax;
+  const input = which==='min'?rMin:rMax;
+  const val = +input.value;
+  el.textContent = which==='min' ? `${U.fmt(val,state.unit)}부터` : `${U.fmt(val,state.unit)}까지`;
+  const pct = (val-state.baseMin)/(state.baseMax-state.baseMin);
+  const x = pct * input.offsetWidth;
+  el.style.left = (input.getBoundingClientRect().left + x - input.getBoundingClientRect().left)+'px';
+  el.classList.add('show');
+}
+function hideBubbles(){ bubMin.classList.remove('show'); bubMax.classList.remove('show'); }
+
+// 틱 라벨 세팅
+function setTicks(){
+  if(state.unit==='sqm'){
+    t1.textContent = '66㎡'; t2.textContent = '165㎡';
+  }else{
+    t1.textContent = '20평'; t2.textContent = '50평';
+  }
+}
+
+// 단위 토글(값은 내부적으로 ㎡ 유지)
+unitBtn.onclick = ()=>{
+  state.unit = state.unit==='sqm' ? 'pyeong' : 'sqm';
+  setTicks(); fillPos();
+};
+
+// 입력 이벤트
+['input','change'].forEach(ev=>{
+  rMin.addEventListener(ev, ()=>{
+    clamp(); fillPos(); showBubble('min'); scheduleMap();
+    if(ev==='change') hideBubbles();
+  });
+  rMax.addEventListener(ev, ()=>{
+    clamp(); fillPos(); showBubble('max'); scheduleMap();
+    if(ev==='change') hideBubbles();
+  });
+});
+
+// 초기화/적용
+$('#reset').onclick = ()=>{ rMin.value=66; rMax.value=165; state.unit='sqm'; setTicks(); fillPos(); scheduleMap(); };
+$('#apply').onclick = ()=>{ applyArea(+rMin.value, +rMax.value); };
+
+// 최초 렌더
+setTicks(); fillPos();
+
+/* ----------------------- 카카오맵 연동 훅 ----------------------- */
+/* 변경 중 과도 호출 방지(200ms) */
+let tmr;
+function scheduleMap(){
+  clearTimeout(tmr);
+  tmr = setTimeout(()=> applyArea(+rMin.value, +rMax.value), 200);
+}
+
+/** 여기서 Kakao Map/Places/오버레이 갱신 하면 됨 */
+function applyArea(minSqm, maxSqm){
+  // 예시: 외부에 제공
+  if(window.onAreaChange) window.onAreaChange({minSqm, maxSqm});
+  // or: redrawMarkers(minSqm, maxSqm);
+}
+
+function $(s){ return document.querySelector(s); }
+
+Kakao Map 연결 가이드(요지)
+
+상단에서 만든 applyArea(minSqm, maxSqm)가 슬라이더 변경(지연) + 적용하기 때마다 호출됨.
+
+페이지 어딘가에서:
+
+window.onAreaChange = ({minSqm, maxSqm})=>{
+  // 1) 서버/로컬 데이터에서 면적 필터링
+  // 2) 지도 마커/오버레이 갱신
+  // 3) 필요하면 지도 리바운드(map.setBounds(...))
+};
+
+
+처음엔 더미로 콘솔만 찍다가, 나중에 Kakao 지도/클러스터러 붙이면 됨.
+
+“커서로” 바꾸고 싶으면 mousemove로 핸들 드래그 대신 지도 상에서 길이/면적을 재는 별도 인터랙션을 만들고,
+그 결과를 applyArea()로 흘려주면 동일하게 동작.

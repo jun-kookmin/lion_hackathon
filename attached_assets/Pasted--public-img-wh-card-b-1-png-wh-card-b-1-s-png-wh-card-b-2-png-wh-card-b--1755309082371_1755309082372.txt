@@ -1,0 +1,171 @@
+폴더/파일 구조
+/public/img/
+  wh-card-b-1.png   wh-card-b-1-s.png   // 헤나체험
+  wh-card-b-2.png   wh-card-b-2-s.png   // 복싱클럽
+  wh-card-c-1.png   wh-card-c-1-s.png   // 레코드카페
+  wh-card-c-2.png   wh-card-c-2-s.png   // 캠핑 바
+  wh-card-h-1.png   wh-card-h-1-s.png   // 실내보드
+  wh-card-h-2.png   wh-card-h-2-s.png   // VR FPS
+  wh-card-p-1.png   wh-card-p-1-s.png   // 24시 펫용품
+  wh-card-p-2.png   wh-card-p-2-s.png   // 펫 셀프 목욕
+index.html
+style.css
+cards.js
+app.js
+
+cards.js (데이터 매핑)
+// 카테고리/색상/타이틀 매핑
+export const CARDS = [
+  { id:'wh-card-b-1', title:'헤나체험',    cat:'뷰티/헬스', color:'pink'   },
+  { id:'wh-card-b-2', title:'복싱클럽',    cat:'뷰티/헬스', color:'pink'   },
+  { id:'wh-card-c-1', title:'레코드카페',  cat:'카페/음식', color:'orange' },
+  { id:'wh-card-c-2', title:'캠핑 바',     cat:'카페/음식', color:'orange' },
+  { id:'wh-card-h-1', title:'실내보드',    cat:'취미/문화', color:'purple' },
+  { id:'wh-card-h-2', title:'VR FPS',      cat:'취미/문화', color:'purple' },
+  { id:'wh-card-p-1', title:'24시 펫용품', cat:'키즈/반려', color:'green'  },
+  { id:'wh-card-p-2', title:'펫 셀프 목욕',cat:'키즈/반려', color:'green'  },
+];
+
+export const COLOR = { pink:'#FF1DAA', orange:'#FF6A00', purple:'#8A00FF', green:'#CCFF00' };
+
+style.css
+:root{ --neon:#E1FF00; }
+
+body{ font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      margin:0; background:#f6f7f8; color:#111; }
+.wrap{ max-width:360px; margin:0 auto; padding:16px; }
+
+.grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.card{ border:0; background:transparent; padding:0; cursor:pointer; text-align:left; }
+.thumb{ border-radius:14px; overflow:hidden; aspect-ratio:1/1.1; display:grid; place-items:center; }
+.thumb img{ width:100%; height:100%; object-fit:cover; display:block; box-shadow:0 6px 16px rgba(0,0,0,.12); }
+.ttl{ margin-top:6px; font-weight:800; font-size:13px; }
+
+/* 클릭된 카드 하이라이트 */
+.card.selected .thumb{
+  outline:4px solid var(--neon);
+  box-shadow:0 0 22px rgba(225,255,0,.65), 0 10px 24px rgba(0,0,0,.2);
+}
+
+/* ===== 모달: 배경 blur 24px + 중앙 사진 한 장 ===== */
+.modal{ position:fixed; inset:0; z-index:999; display:grid; place-items:center;
+        visibility:hidden; opacity:0; transition:opacity .2s; }
+.modal::before{
+  content:""; position:absolute; inset:0; background:rgba(0,0,0,.08);
+  backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+}
+.modal[aria-hidden="false"]{ visibility:visible; opacity:1; }
+
+.sheet{ width:min(340px,92vw); background:#00d2ff; border-radius:20px; padding:14px;
+        box-shadow:0 16px 48px rgba(0,0,0,.25); transform:scale(.96); opacity:0; transition:.2s; }
+.modal[aria-hidden="false"] .sheet{ transform:scale(1); opacity:1; }
+.hero{ border-radius:16px; overflow:hidden; aspect-ratio:360/640; background:#eee; }
+.hero img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+/* 배경 스크롤 잠금 (모바일 점프 방지) */
+body.modal-open{ position:fixed; width:100%; overflow:hidden; }
+
+index.html
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자리잡다 – 카드 추천</title>
+<link rel="stylesheet" href="style.css">
+
+<div class="wrap">
+  <h3 style="margin:0 0 8px;">추천 업종 3가지</h3>
+  <div id="grid" class="grid"></div>
+</div>
+
+<!-- 모달(배경 블러 + 중앙 이미지) -->
+<div id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <figure class="hero"><img id="hero" alt=""></figure>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+
+app.js
+import { CARDS, COLOR } from './cards.js';
+
+const grid = document.getElementById('grid');
+const modal = document.getElementById('modal');
+const hero  = document.getElementById('hero');
+
+let scrollY = 0;
+
+/* 1) 카드 3장 랜덤 출력 */
+const picks = [...CARDS].sort(()=>Math.random()-0.5).slice(0,3);
+picks.forEach(item=>{
+  const btn = document.createElement('button');
+  btn.className = 'card';
+  btn.dataset.id = item.id;
+  btn.dataset.title = item.title;
+  btn.innerHTML = `
+    <div class="thumb" style="background:${COLOR[item.color]}">
+      <img src="public/img/${item.id}.png" alt="${item.title}" loading="lazy">
+    </div>
+    <div class="ttl">${item.title}</div>
+  `;
+  btn.addEventListener('click', ()=>openDetail(item, btn));
+  grid.appendChild(btn);
+});
+
+/* 2) 클릭 → 카드 하이라이트 + 배경 blur(24px) + 중앙은 -s 이미지 */
+function openDetail(item, btn){
+  document.querySelectorAll('.card').forEach(el=>el.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  hero.src = `public/img/${item.id}-s.png`;   // 상세는 -s 버전 사용
+  hero.alt = item.title;
+
+  scrollY = window.scrollY || document.documentElement.scrollTop;
+  document.body.style.top = `-${scrollY}px`;
+  document.body.classList.add('modal-open');
+
+  modal.setAttribute('aria-hidden','false');
+  history.pushState({id:item.id}, '', `#detail/${item.id}`);
+}
+
+/* 3) 닫기 처리(오버레이 클릭/ESC/뒤로가기) */
+function closeDetail(){
+  modal.setAttribute('aria-hidden','true');
+  document.body.classList.remove('modal-open');
+  document.body.style.top = '';
+  window.scrollTo(0, scrollY);
+  document.querySelectorAll('.card').forEach(el=>el.classList.remove('selected'));
+}
+modal.addEventListener('click', e => { if(e.target === modal) history.back(); });
+window.addEventListener('keydown', e => { if(e.key === 'Escape' && modal.getAttribute('aria-hidden')==='false') history.back(); });
+window.addEventListener('popstate', closeDetail);
+
+/* 4) 새로고침 시 해시가 있으면 자동 오픈(선택) */
+if(location.hash.startsWith('#detail/')){
+  const id = location.hash.split('/')[1];
+  const item = CARDS.find(c=>c.id===id);
+  const btn = [...grid.querySelectorAll('.card')].find(b=>b.dataset.id===id);
+  if(item && btn) openDetail(item, btn);
+}
+
+수용 기준(체크리스트)
+
+카드 3장이 랜덤으로 노출된다.
+
+카드 클릭 시 클릭한 카드만 네온 옐로 outline.
+
+배경은 정지되고(스크롤 락), 화면 전체에 blur 24px 오버레이.
+
+중앙의 상세는 *-s.png 한 장만 보인다.
+
+오버레이 클릭/ESC/뒤로가기 모두 닫힘.
+
+새로고침 후 #detail/{id}가 있으면 자동으로 같은 상세가 열린다.
+
+호환성 메모
+
+backdrop-filter(블러)는 iOS/모던 브라우저 OK. 미지원 환경에서는 반투명 배경만 보이지만 기능은 동일.
+
+이미지 경로만 /public/img/…에 정확히 업로드하면 추가 설정 없이 동작.
+
+이대로 Replit에 파일 업로드하고 index.html 열면 끝!

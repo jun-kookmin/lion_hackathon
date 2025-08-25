@@ -1,0 +1,109 @@
+지금 코드에선 “눈에 보이는 핸들(이미지)”을 따로 그려놓고, 실제 드래그는 네이티브 <input type="range"> 로 하고 있어요.
+Replit에서 두 번째처럼 보이는 이유는 네이티브 슬라이더의 기본 thumb/track 이 그대로 보이기 때문이에요.
+해결은 간단합니다. 네이티브 thumb/track 을 완전히 숨기고(appearance none), 투명 hit-area 만 남기기면 됩니다.
+
+아래처럼 딱 2군데만 고치면 끝!
+
+1) input type="range" 에 공통 클래스 붙이기
+
+코드에 있는 모든 range 입력에 className="wh-range" 를 추가하세요. (면적/보증금/임대료 섹션 전부)
+
+<input
+  id="range-min"
+  type="range"
+  className="wh-range"
+  min="33"
+  max="330"
+  value={areaMin}
+  onChange={...}
+/>
+
+<input
+  id="range-max"
+  type="range"
+  className="wh-range"
+  min="33"
+  max="330"
+  value={areaMax}
+  onChange={...}
+/>
+
+
+보증금/임대료 쪽 input 도 전부 className="wh-range" 추가하세요.
+
+2) 전역 CSS 에 네이티브 슬라이더 숨기는 스타일 추가
+
+src/index.css(또는 전역 스타일 파일)에 아래를 그대로 넣어주세요.
+
+/* 공통 포지셔닝: 시각 핸들/트랙 위에 겹치도록 */
+.wh-range {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + 4px);
+  transform: translateY(-50%);
+  width: 100%;
+  height: 32px;           /* 드래그 히트 에어리어 */
+  background: transparent;
+  border: none;
+  outline: none;
+  z-index: 20;            /* fill/track 위, 이미지 핸들과는 상호작용하지 않음 */
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* WebKit(Chrome/Safari) — 기본 트랙/썸 완전 제거 */
+.wh-range::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 0;
+}
+.wh-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Firefox — 기본 트랙/썸 완전 제거 */
+.wh-range::-moz-range-track {
+  background: transparent;
+  height: 0;
+  border: none;
+}
+.wh-range::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Edge/IE */
+.wh-range::-ms-track {
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+  height: 0;
+}
+.wh-range::-ms-thumb {
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+}
+
+
+포인트
+
+네이티브 thumb/track 을 0 크기 + 투명으로 만들고,
+
+실제 보이는 건 이미 그려두신 fill div + 이미지 핸들 만 남깁니다.
+
+이미지 핸들에는 이미 pointer-events: none 이라 입력이 가려지지 않아요.
+
+이렇게 하면 Replit에서도 두 번째(겹쳐 보이는) 문제가 사라지고 첫 번째처럼 깔끔하게 보여요.
+추가로 드래그 중 버블까지 잘 나오게 하려면 지금처럼 isDragging 로직 유지하시면 됩니다.

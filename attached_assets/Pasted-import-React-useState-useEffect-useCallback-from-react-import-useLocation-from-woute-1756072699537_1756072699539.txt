@@ -1,0 +1,285 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
+import heartIcon from "@assets/wh-icon-2_1755991104492.png";
+
+interface CardData {
+  id: string;
+  title: string;
+  category: string;
+  categoryColor: string;
+  image: string;
+  description: string;
+  stats: { success: string; enthusiasm: string };
+}
+
+const cardData: CardData[] = [
+  {
+    id: "wh-card-c-1",
+    title: "레코드 틀어주는 감성 카페",
+    category: "카페/음식",
+    categoryColor: "#FA5705",
+    image: "/figmaAssets/wh-card-c-1_1755308360319.png",
+    description: "영화 틀어주는 감성 카페",
+    stats: { success: "40%", enthusiasm: "20%" }
+  },
+  {
+    id: "wh-card-p-2",
+    title: "펫 셀프 목욕",
+    category: "키즈/반려",
+    categoryColor: "#CCFF00",
+    image: "/figmaAssets/wh-card-p-2_1755308360320.png",
+    description: "펫 셀프 목욕",
+    stats: { success: "43%", enthusiasm: "19%" }
+  },
+  {
+    id: "wh-card-b-1",
+    title: "헤나체험",
+    category: "뷰티/웰스",
+    categoryColor: "#FF00AE",
+    image: "/figmaAssets/wh-card-b-1_1755308360319.png",
+    description: "헤나, 타투스티커 체험",
+    stats: { success: "42%", enthusiasm: "23%" }
+  },
+  {
+    id: "wh-card-h-2",
+    title: "VR FPS",
+    category: "취미/문화",
+    categoryColor: "#9D00FF",
+    image: "/figmaAssets/wh-card-h-2_1755308360320.png",
+    description: "VR FPS 아레나",
+    stats: { success: "40%", enthusiasm: "20%" }
+  },
+  {
+    id: "wh-card-c-2",
+    title: "캠핑 바",
+    category: "카페/음식",
+    categoryColor: "#FA5705",
+    image: "/figmaAssets/wh-card-c-2_1755308360319.png",
+    description: "캠핑 컨셉트 바 및 주류매장",
+    stats: { success: "41%", enthusiasm: "21%" }
+  }
+];
+
+interface CardCarouselProps {
+  autoSlideInterval?: number; // 자동 슬라이드 간격 (ms)
+  enableAutoSlide?: boolean; // 자동 슬라이드 활성화
+  animationDuration?: number; // 애니메이션 시간 (ms)
+}
+
+export const CardCarousel: React.FC<CardCarouselProps> = ({
+  autoSlideInterval = 2000,
+  enableAutoSlide = true,
+  animationDuration = 350 // 더 빠른 애니메이션
+}) => {
+  const [, setLocation] = useLocation();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [nextIndex, setNextIndex] = useState(0);
+
+  const nextSlide = useCallback(() => {
+    if (isAnimating) return;
+    
+    const nextIdx = (currentIndex + 1) % cardData.length;
+    setNextIndex(nextIdx);
+    setIsAnimating(true);
+    
+    // 애니메이션 완료 후 인덱스 업데이트
+    setTimeout(() => {
+      setCurrentIndex(nextIdx);
+      setIsAnimating(false);
+    }, animationDuration);
+  }, [currentIndex, isAnimating, animationDuration]);
+
+  // 자동 슬라이드
+  useEffect(() => {
+    if (!enableAutoSlide) return;
+    
+    const interval = setInterval(nextSlide, autoSlideInterval);
+    return () => clearInterval(interval);
+  }, [nextSlide, autoSlideInterval, enableAutoSlide]);
+
+  const currentCard = cardData[currentIndex];
+  const nextCard = cardData[nextIndex];
+  const prevCard = cardData[(currentIndex - 1 + cardData.length) % cardData.length];
+  const nextNextCard = cardData[(currentIndex + 1) % cardData.length];
+
+  const handleCardClick = (cardId: string) => {
+    setLocation(`/card/${cardId}`);
+  };
+
+  const goToPrevious = () => {
+    if (isAnimating) return;
+    const prevIdx = (currentIndex - 1 + cardData.length) % cardData.length;
+    setNextIndex(prevIdx);
+    setIsAnimating(true);
+    setTimeout(() => {
+      setCurrentIndex(prevIdx);
+      setIsAnimating(false);
+    }, animationDuration);
+  };
+
+  const goToNext = () => {
+    nextSlide();
+  };
+
+  return (
+    <div className="relative w-full h-full" style={{ perspective: '1200px' }}>
+      {/* 3D Card Container */}
+      <div 
+        className="absolute top-[140px] left-1/2 transform -translate-x-1/2 w-[400px] h-[240px]"
+        style={{ transformStyle: 'preserve-3d' }}
+      >
+        {/* Left Card (Previous) - 부드러운 페이드 효과 */}
+        <div 
+          className="absolute cursor-pointer transition-all duration-700 ease-in-out hover:scale-105"
+          style={{
+            left: '0px',
+            top: '20px',
+            width: '100px',
+            height: '125px',
+            transform: `translateZ(-50px) rotateY(25deg) scale(1)`,
+            opacity: isAnimating ? 0.2 : 0.6,
+            zIndex: 1,
+            filter: `blur(${isAnimating ? 2.5 : 1.5}px) brightness(${isAnimating ? 0.7 : 1})`
+          }}
+          onClick={() => goToPrevious()}
+        >
+          <img 
+            src={prevCard.image}
+            alt={prevCard.title}
+            className="w-full h-full object-contain rounded-lg shadow-lg"
+          />
+        </div>
+
+        {/* Center Card (Current) - Main Focus */}
+        <div 
+          className="absolute cursor-pointer transition-all duration-700 ease-in-out hover:scale-105"
+          style={{
+            left: '50%',
+            top: '0px',
+            width: '200px',
+            height: '160px',
+            transform: `translateX(-50%) translateZ(50px) scale(${isAnimating ? 1.05 : 1.1})`,
+            zIndex: 10,
+            filter: `drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3)) brightness(${isAnimating ? 0.8 : 1})`,
+            opacity: isAnimating ? 0.6 : 1
+          }}
+          onClick={() => handleCardClick(currentCard.id)}
+        >
+          <img 
+            src={currentCard.image}
+            alt={currentCard.title}
+            className="w-full h-full object-contain rounded-xl transition-transform duration-700 ease-in-out"
+            style={{
+              transform: isAnimating ? 'scale(0.98)' : 'scale(1)'
+            }}
+          />
+          {/* 가운데 카드 강조 효과 제거 */}
+        </div>
+
+        {/* Right Card (Next) - 부드러운 페이드 효과 */}
+        <div 
+          className="absolute cursor-pointer transition-all duration-700 ease-in-out hover:scale-105"
+          style={{
+            right: '0px',
+            top: '20px',
+            width: '100px',
+            height: '125px',
+            transform: `translateZ(-50px) rotateY(-25deg) scale(1)`,
+            opacity: isAnimating ? 0.2 : 0.6,
+            zIndex: 1,
+            filter: `blur(${isAnimating ? 2.5 : 1.5}px) brightness(${isAnimating ? 0.7 : 1})`
+          }}
+          onClick={() => goToNext()}
+        >
+          <img 
+            src={nextNextCard.image}
+            alt={nextNextCard.title}
+            className="w-full h-full object-contain rounded-lg shadow-lg"
+          />
+        </div>
+
+        {/* 전환 오버레이 효과 제거 */}
+      </div>
+
+      {/* Card Title - 3D 레이아웃에 맞춰 위치 조정 */}
+      <div className="absolute top-[320px] left-1/2 transform -translate-x-1/2 text-center">
+        <div className="flex items-center justify-center gap-0">
+          <span 
+            className="text-black [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-[16px] transition-opacity"
+            style={{
+              opacity: isAnimating ? 0.5 : 1,
+              transitionDuration: `${animationDuration / 2}ms`,
+              textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+          >
+            {currentCard.title}
+          </span>
+        </div>
+      </div>
+
+      {/* Global CSS for 3D carousel animation */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes slideInFromRight {
+            0% {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            100% {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          
+          @keyframes slideOutToLeft {
+            0% {
+              transform: translateX(0);
+              opacity: 1;
+            }
+            100% {
+              transform: translateX(-100%);
+              opacity: 0;
+            }
+          }
+
+          @keyframes pulseEffect {
+            0% {
+              opacity: 0;
+              transform: scale(0.8);
+            }
+            50% {
+              opacity: 1;
+              transform: scale(1.05);
+            }
+            100% {
+              opacity: 0;
+              transform: scale(1.2);
+            }
+          }
+
+          @keyframes fadeInOut {
+            0% {
+              opacity: 0;
+            }
+            50% {
+              opacity: 0.8;
+            }
+            100% {
+              opacity: 0;
+            }
+          }
+
+          @keyframes glowPulse {
+            0%, 100% {
+              box-shadow: 0 0 20px rgba(0, 214, 248, 0.3);
+            }
+            50% {
+              box-shadow: 0 0 30px rgba(0, 214, 248, 0.6), 0 0 40px rgba(204, 255, 0, 0.3);
+            }
+          }
+        `
+      }} />
+    </div>
+  );
+};

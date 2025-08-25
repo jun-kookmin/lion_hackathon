@@ -1,0 +1,72 @@
+아이콘이 “안 보이거나 일부만 보이는” 건 보통 아래 3가지 때문이야:
+
+경로/대소문자 문제(404) — public/img/wh-icon-10.png vs /public/img/… vs ./public/img/…
+
+사이즈/레이아웃 문제 — 아이콘이 너무 커서 버튼 overflow:hidden에 잘림, 혹은 flex-shrink로 눌림
+
+배경으로 넣었는데 크기/포지션 값이 틀림 — background-size/position 기본값 때문에 일부만 보임
+
+확실하게 보이게 하는 권장 구현 2가지를 바로 쓸 수 있게 줘!
+
+A. <img>로 넣는 안전한 방법 (가장 간단)
+<button class="btn-consult">
+  <img class="ic" src="./public/img/wh-icon-10.png" alt="" width="18" height="18" />
+  상담신청
+</button>
+
+.btn-consult{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:10px 16px; border-radius:12px;
+  background:#CCFF00; color:#111; font-weight:900; border:0;
+  box-shadow:0 6px 16px rgba(0,0,0,.15);
+}
+.btn-consult .ic{
+  width:18px; height:18px; flex:0 0 18px;     /* 줄어들지 않게 */
+  object-fit:contain; display:block;
+}
+
+
+경로는 상대경로 ./public/img/… 권장(Replit 정적 서버에서 루트(/) 경로가 환경에 따라 다를 수 있음).
+
+버튼/부모가 overflow:hidden이면 아이콘이 클 때 잘릴 수 있으니 위처럼 정확한 width/height + flex:0 0을 줘서 고정.
+
+B. ::before로 아이콘 배경 넣기 (이미지 태그 없이)
+<button class="btn-consult btn-consult--bg">상담신청</button>
+
+.btn-consult--bg{
+  position:relative; padding-left:14px;  /* 아이콘 여백용 */
+}
+.btn-consult--bg::before{
+  content:""; display:inline-block; vertical-align:-3px;
+  width:18px; height:18px; margin-right:8px;
+  background: url("./public/img/wh-icon-10.png") center/contain no-repeat;
+  filter: brightness(0);  /* 검정으로 */
+}
+
+
+PNG 색을 바꾸고 싶으면 filter: brightness(0)로 검정, invert(1)로 흰색 등 간단 보정 가능.
+
+꼭 점검
+
+DevTools → Network 에서 wh-icon-10.png가 200인지 확인 (404면 경로/철자/대소문자 수정).
+리눅스 서버는 대소문자 구분하니 wh-icon-10.png와 wh-Icon-10.png는 다른 파일이야.
+
+크기: width/height 미설정 + 부모 overflow:hidden이면 일부만 보여 스크린샷처럼 점+웨이브만 남을 수 있어. 위 CSS처럼 고정하면 해결.
+
+배경으로 썼다면 background-size: contain; background-position: center; 꼭 지정.
+
+보너스: SVG로 깔끔하게(색상 currentColor 상속)
+
+PNG 대신 SVG 쓰면 텍스트 색에 맞춰 자동으로 색이 변해.
+
+<button class="btn-consult">
+  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="currentColor" d="M21 16.5v3a2 2 0 0 1-2.18 2c-3.26-.36-6.18-1.86-8.58-4.26S4.86 12.44 4.5 9.18A2 2 0 0 1 6.5 7h3a1 1 0 0 1 1 .78l.5 2a1 1 0 0 1-.27.95l-1.2 1.2a12.05 12.05 0 0 0 4.24 4.24l1.2-1.2a1 1 0 0 1 .95-.27l2 .5a1 1 0 0 1 .78 1z"/>
+  </svg>
+  상담신청
+</button>
+
+.btn-consult .ic{ width:18px; height:18px; flex:0 0 18px; }
+
+
+이대로 적용해도 안 뜨면 이미지 경로가 99% 문제야. 위처럼 ./public/img/wh-icon-10.png로 바꾸고, 네트워크 탭에서 200 확인해봐!

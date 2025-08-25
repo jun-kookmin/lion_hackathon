@@ -1,0 +1,659 @@
+import React, { useState, useEffect, useRef } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Link, useLocation } from "wouter";
+import starshopIcon from "@assets/wh-icon-header-starshop_1755922566531.png";
+import { AreaSelector } from "@/components/ui/area-selector";
+import { RangeSlider } from "@/components/ui/range-slider";
+
+declare global {
+  interface Window {
+    naver: any;
+    navermap_authFailure?: () => void;
+  }
+}
+
+export const Element = (): JSX.Element => {
+  const filterButtons = [
+    { label: "면적", icon: ">" },
+    { label: "예산", icon: ">" },
+    { label: "옵션", icon: ">" },
+  ];
+
+  const allBusinessCards = [
+    { id: "wh-card-b-1", src: "/figmaAssets/wh-card-b-1_1755308360319.png", title: "헤나체험", alt: "헤나체험" },
+    { id: "wh-card-b-2", src: "/figmaAssets/wh-card-b-2_1755308360319.png", title: "복싱클럽", alt: "복싱클럽", hasIcon: true, iconSrc: "/figmaAssets/wh-icon-2-1.png" },
+    { id: "wh-card-c-1", src: "/figmaAssets/wh-card-c-1_1755308360319.png", title: "레코드카페", alt: "레코드카페", hasIcon: true, iconSrc: "/figmaAssets/wh-icon-2-1.png" },
+    { id: "wh-card-c-2", src: "/figmaAssets/wh-card-c-2_1755308360319.png", title: "캠핑 바", alt: "캠핑 바", hasIcon: true, iconSrc: "/figmaAssets/wh-icon-2-1.png" },
+    { id: "wh-card-h-1", src: "/figmaAssets/wh-card-h-1_1755308360320.png", title: "실내보드", alt: "실내보드" },
+    { id: "wh-card-h-2", src: "/figmaAssets/wh-card-h-2_1755308360320.png", title: "VR FPS", alt: "VR FPS" },
+    { id: "wh-card-p-1", src: "/figmaAssets/wh-card-p-1_1755308360320.png", title: "24시 펫용품", alt: "24시 펫용품" },
+    { id: "wh-card-p-2", src: "/figmaAssets/wh-card-p-2_1755308360320.png", title: "펫 셀프 목욕", alt: "펫 셀프 목욕" },
+  ];
+
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [businessCards, setBusinessCards] = useState(allBusinessCards.slice(0, 3));
+  const [selectedCard, setSelectedCard] = useState<string | null>(null);
+  const [showAreaSection, setShowAreaSection] = useState(false);
+  const [showBudgetSection, setShowBudgetSection] = useState(false);
+  const [showOptionSection, setShowOptionSection] = useState(false);
+  const [areaUnit, setAreaUnit] = useState<'sqm' | 'pyeong'>('sqm');
+  const [areaMin, setAreaMin] = useState(33);
+  const [areaMax, setAreaMax] = useState(330);
+  const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
+  
+  // 옵션 필터링 상태
+  const [selectedCategory, setSelectedCategory] = useState<string>('전체');
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>('전체');
+  
+  // 예산 필터링 상태
+  const [budgetMin, setBudgetMin] = useState(0);
+  const [budgetMax, setBudgetMax] = useState(25000);
+  const [depositMin, setDepositMin] = useState(35);
+  const [depositMax, setDepositMax] = useState(150);
+  const [includeManagementFee, setIncludeManagementFee] = useState(true);
+  const [budgetDragging, setBudgetDragging] = useState<'min' | 'max' | null>(null);
+  const [depositDragging, setDepositDragging] = useState<'min' | 'max' | null>(null);
+
+  const shuffleCards = () => {
+    // 랜덤으로 3개 선택
+    const shuffled = [...allBusinessCards].sort(() => 0.5 - Math.random());
+    setBusinessCards(shuffled.slice(0, 3));
+    setSelectedCard(null); // 선택된 카드 초기화
+  };
+
+  useEffect(() => {
+    shuffleCards();
+  }, []);
+
+  // 네이버 지도 초기화
+  useEffect(() => {
+    // 네이버 지도 API가 로드되었는지 확인
+    if (window.naver && window.naver.maps && mapRef.current) {
+      const mapOptions = {
+        center: new window.naver.maps.LatLng(37.3595704, 127.105399),
+        zoom: 15
+      };
+
+      const map = new window.naver.maps.Map(mapRef.current, mapOptions);
+    }
+
+    // 인증 실패 핸들러
+    window.navermap_authFailure = () => {
+      console.error('네이버 지도 API 인증 실패');
+    };
+  }, []);
+
+  const [, setLocation] = useLocation();
+
+  const bottomNavIcons = [
+    { id: "h", src1: "/figmaAssets/wh-icon-footer-h-1.png", src2: "/figmaAssets/wh-icon-footer-h-2.png", alt: "홈", route: "/" },
+    { id: "s", src1: "/figmaAssets/wh-icon-footer-s-1.png", src2: "/figmaAssets/wh-icon-footer-s-2.png", alt: "상점", route: "/store", active: true },
+    { id: "b", src1: "/figmaAssets/wh-icon-footer-b-1.png", src2: "/figmaAssets/wh-icon-footer-b-2.png", alt: "건물", route: "/building" },
+    { id: "c", src1: "/figmaAssets/wh-icon-footer-c-1.png", src2: "/figmaAssets/wh-icon-footer-c-2.png", alt: "상담", route: "/consultation" },
+    { id: "m", src1: "/figmaAssets/wh-icon-footer-m-1.png", src2: "/figmaAssets/wh-icon-footer-m-2.png", alt: "마이페이지", route: "/mypage" },
+  ];
+
+  return (
+    <div className="bg-white grid justify-items-center [align-items:start] w-screen">
+      <div className="bg-white overflow-hidden w-[360px] h-[1142px] relative">
+        <header className="absolute w-[362px] h-[63px] -top-px -left-px">
+          <div className="absolute w-[362px] h-[62px] top-0 left-0 border border-solid border-[#dadada]">
+            <nav className="inline-flex items-center gap-3 absolute top-[25px] left-[18px]">
+              <Button
+                variant="ghost"
+                className="relative w-fit mt-[-1.00px] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-[#b0b0b0] text-xl tracking-[0] leading-[normal] p-0 h-auto hover:bg-transparent"
+                onClick={() => setLocation('/where-is-good')}
+                data-testid="button-where-is-good"
+              >
+                어디가 좋을까?
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="relative w-fit mt-[-1.00px] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-[#666666] text-xl tracking-[0] leading-[normal] p-0 h-auto hover:bg-transparent"
+                data-testid="button-what-to-do"
+              >
+                여기에 뭐할까?
+              </Button>
+            </nav>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute p-0 flex items-center justify-center"
+              style={{ top: '12px', right: '12px' }}
+              onClick={() => setLocation('/star')}
+              data-testid="button-star"
+            >
+              <img
+                src={starshopIcon}
+                alt="스타샵"
+                style={{ height: '38px', width: 'auto' }}
+              />
+            </Button>
+          </div>
+
+          <div className="absolute w-[122px] h-[3px] top-[60px] left-[151px] bg-[#666666]" />
+        </header>
+
+        <main className="absolute w-[424px] h-[640px] top-[140px] left-[-33px]">
+          <div className="absolute w-[424px] h-[169px] top-[27px] left-0" />
+
+          <div className="absolute w-[367px] h-[640px] top-0 left-8">
+            <section className="absolute w-[360px] h-[422px] top-5 left-px">
+              <div className="absolute w-[360px] h-[74px] top-0 left-0">
+                <div className="relative w-[328px] h-[53px] top-[7px] left-4">
+                  <div className="input-wrap w-[328px] h-[53px] rounded-[8.94px] overflow-hidden border-[1.77px] border-solid border-[#00d6f8] backdrop-blur-[11.82px] backdrop-brightness-[100%] [-webkit-backdrop-filter:blur(11.82px)_brightness(100%)] bg-white">
+                    <Input
+                      type="search"
+                      className="w-full h-full px-[22px] py-[15px] bg-transparent border-0 outline-none ring-0 focus:ring-0 shadow-none [appearance:none] [-webkit-appearance:none] [background-clip:padding-box] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-[#666666] text-[16px] tracking-[0] leading-[20px] focus-visible:ring-0"
+                      placeholder="어디에 자리 잡고 싶으신가요?"
+                      style={{
+                        WebkitTextSizeAdjust: '100%',
+                        textSizeAdjust: '100%',
+                        fontSize: '16px'
+                      }}
+                    />
+
+                    <img
+                      className="absolute w-[38px] h-[38px] top-2 left-[282px] object-cover"
+                      alt="Wh icon"
+                      src="/figmaAssets/wh-icon-6-1.png"
+                    />
+                  </div>
+
+                  <img
+                    className="absolute w-0.5 h-[18px] top-[18px] left-[15px]"
+                    alt="Group"
+                    src="/figmaAssets/group-1000005521.png"
+                  />
+                </div>
+              </div>
+
+              <div 
+                ref={mapRef}
+                className="absolute w-[328px] h-[348px] top-[74px] left-4 rounded-lg border-2 border-[#00D6F8]"
+              ></div>
+            </section>
+
+            <Button
+              variant="link"
+              className="absolute h-[22px] top-[618px] left-[274px] [font-family:'SUITE-SemiBold',Helvetica] font-semibold text-[#8d8d8d] text-xs tracking-[0] leading-[21.8px] underline whitespace-nowrap p-0 h-auto"
+              onClick={shuffleCards}
+            >
+              다시 추천받기
+            </Button>
+
+            <h2 className="absolute h-[21px] top-[618px] left-4 [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-[#666666] text-[16.8px] tracking-[0] leading-[normal]">
+              추천 업종 3가지
+            </h2>
+
+            <div className="absolute w-[360px] h-[17px] top-0 left-0 [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-[#666666] text-[14.4px] text-center tracking-[0] leading-[16.8px]">
+              위치를 찍으면 업종을 추천해드려요!
+            </div>
+
+            <section className="absolute w-[285px] h-[108px] top-[465px] left-[18px]">
+              <div className="absolute w-[283px] top-6 left-0 [font-family:'SUITE-Regular',Helvetica] font-normal text-[#666666] text-xs tracking-[0] leading-[21.2px]">
+                도로명 주소: 강남구 테헤란로 152
+                <br />
+                지번주소: 강남구 역삼동 737
+                <br />
+                건물명/장소명: 삼성역, 크리에이티브크루
+                <br />
+                지도에서 직접 클릭하여 선택 가능
+              </div>
+
+              <div className="absolute w-[73px] h-5 top-0 left-0">
+                <div className="absolute h-5 top-0 left-[22px] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-black text-[13px] tracking-[0] leading-5 whitespace-nowrap">
+                  입력 방법
+                </div>
+
+                <img
+                  className="absolute w-5 h-5 top-0 left-0 object-cover"
+                  alt="Wh icon"
+                  src="/figmaAssets/wh-icon-7-1.png"
+                />
+              </div>
+            </section>
+          </div>
+
+          <img
+            className="absolute w-[53px] h-[53px] top-[217px] left-[188px] object-cover"
+            alt="Mappin"
+            src="/figmaAssets/mappin-1.png"
+          />
+        </main>
+
+        <nav className="absolute w-[362px] h-[55px] top-[1088px] -left-px bg-gray-color6-f6f7f9 border-[1.2px] border-solid border-[#dadada]">
+          <div className="inline-flex items-center gap-[38px] relative top-3 left-[34px]">
+            {bottomNavIcons.map((icon) => (
+              <Button
+                key={icon.id}
+                variant="ghost"
+                size="icon"
+                className="relative w-7 h-7 p-0 hover:bg-transparent"
+                onClick={() => setLocation(icon.route)}
+              >
+                <img
+                  className="w-7 h-7 object-cover"
+                  alt={icon.alt}
+                  src={icon.active ? icon.src2 : icon.src1}
+                />
+              </Button>
+            ))}
+          </div>
+        </nav>
+
+        <div className="inline-flex items-center gap-3 absolute top-[86px] left-[18px] z-10">
+          {filterButtons.map((button, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                if (button.label === "면적") {
+                  setShowAreaSection(!showAreaSection);
+                  setShowBudgetSection(false);
+                  setShowOptionSection(false);
+                } else if (button.label === "예산") {
+                  setShowBudgetSection(!showBudgetSection);
+                  setShowAreaSection(false);
+                  setShowOptionSection(false);
+                } else if (button.label === "옵션") {
+                  setShowOptionSection(!showOptionSection);
+                  setShowAreaSection(false);
+                  setShowBudgetSection(false);
+                }
+              }}
+              className={`relative w-[65px] h-7 hover:bg-[#00c6e8] text-white rounded-[40px] flex items-center justify-center transition-colors cursor-pointer ${
+                (button.label === "면적" && showAreaSection) || 
+                (button.label === "예산" && showBudgetSection) || 
+                (button.label === "옵션" && showOptionSection) 
+                  ? 'bg-[#CCFF00] text-[#666666]' 
+                  : 'bg-[#00d6f8]'
+              }`}
+            >
+              <div className="flex items-center gap-[3px]">
+                <div className={`text-[15px] tracking-[-0.23px] leading-5 ${
+                  button.label === "면적" || button.label === "예산" || button.label === "옵션" 
+                    ? "[font-family:'SUITE-Medium',Helvetica] font-medium" 
+                    : "[font-family:'SUITE-ExtraBold',Helvetica] font-extrabold"
+                } ${
+                  (button.label === "면적" && showAreaSection) || 
+                  (button.label === "예산" && showBudgetSection) || 
+                  (button.label === "옵션" && showOptionSection) 
+                    ? 'text-[#666666]' : ''
+                }`}>
+                  {button.label}
+                </div>
+                <div className={`w-2.5 rotate-90 text-[15px] tracking-[-0.23px] leading-5 ${
+                  button.label === "면적" || button.label === "예산" || button.label === "옵션" 
+                    ? "[font-family:'SUITE-Medium',Helvetica] font-medium" 
+                    : "[font-family:'SUITE-ExtraBold',Helvetica] font-extrabold"
+                } ${
+                  (button.label === "면적" && showAreaSection) || 
+                  (button.label === "예산" && showBudgetSection) || 
+                  (button.label === "옵션" && showOptionSection) 
+                    ? 'rotate-[-90deg]' : 'rotate-90'
+                } ${
+                  (button.label === "면적" && showAreaSection) || 
+                  (button.label === "예산" && showBudgetSection) || 
+                  (button.label === "옵션" && showOptionSection) 
+                    ? 'text-[#666666]' : ''
+                } transition-transform`}>
+                  {button.icon}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="absolute h-[18px] top-[1009px] left-[83px] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-[#666666] text-[14.4px] tracking-[0] leading-[normal]">
+          마음에 드는 카드를 톡! 눌러보세요
+        </div>
+
+        <section className="absolute w-[330px] h-[166px] top-[795px] left-[15px]">
+          <div className="absolute w-[330px] h-5 top-[146px] left-0">
+            {businessCards.map((card, index) => (
+              <div
+                key={card.id}
+                className="absolute h-5 top-0 [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-black text-base tracking-[0] leading-5 whitespace-nowrap flex items-center justify-center"
+                style={{
+                  left: `${index * (105.24 + 7.26) + 52.62}px`,
+                  transform: 'translateX(-50%)'
+                }}
+              >
+                {card.hasIcon && (
+                  <img
+                    className="relative w-5 h-5 object-cover mr-1"
+                    alt="Wh icon"
+                    src={card.iconSrc}
+                  />
+                )}
+                {card.title}
+              </div>
+            ))}
+          </div>
+
+          <div className="inline-flex items-center gap-[7.26px] absolute top-0 left-0">
+            {businessCards.map((card, index) => (
+              <Link key={card.id} href={`/card/${card.id}`}>
+                <Button
+                  variant="ghost"
+                  className={`relative w-[105.24px] h-[131.74px] p-0 hover:bg-transparent transition-all duration-200 ${
+                    selectedCard === card.id ? 'border-2 border-[#00D6F8]' : ''
+                  }`}
+                  onClick={() => {
+                    setSelectedCard(card.id);
+                    // 마지막으로 클릭한 카드 ID를 localStorage에 저장
+                    localStorage.setItem('lastViewedCardId', card.id);
+                  }}
+                  style={{
+                    borderStyle: selectedCard === card.id ? 'solid' : 'none',
+                    borderWidth: selectedCard === card.id ? '2px' : '0px',
+                    borderColor: selectedCard === card.id ? '#00D6F8' : 'transparent'
+                  }}
+                >
+                  <img
+                    className="w-[105.24px] h-[131.74px] object-cover rounded-lg"
+                    alt={card.alt}
+                    src={card.src}
+                  />
+                </Button>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* 면적 섹션 영역 - 기존 코드 주석처리하고 새 AreaSelector 컴포넌트 사용 */}
+        {showAreaSection && (
+          <div className="absolute w-[360px] bg-white border-b border-gray-200 shadow-lg" style={{ top: '122px', left: '0px', zIndex: 15 }}>
+            <AreaSelector
+              areaMin={areaMin}
+              areaMax={areaMax}
+              areaUnit={areaUnit}
+              isDragging={isDragging}
+              onAreaMinChange={setAreaMin}
+              onAreaMaxChange={setAreaMax}
+              onAreaUnitChange={() => setAreaUnit(areaUnit === 'sqm' ? 'pyeong' : 'sqm')}
+              onDragStart={setIsDragging}
+              onDragEnd={() => setIsDragging(null)}
+              onReset={() => {
+                setAreaMin(33);
+                setAreaMax(330);
+                setAreaUnit('sqm');
+              }}
+              onApply={() => {
+                // Apply area filter logic here
+                setShowAreaSection(false);
+              }}
+              onClose={() => setShowAreaSection(false)}
+            />
+          </div>
+        )}
+
+        {/* 예산 섹션 */}
+        {showBudgetSection && (
+          <div className="absolute w-[360px] bg-white border-b border-gray-200 shadow-lg" style={{ top: '122px', left: '0px', zIndex: 15 }}>
+            <div className="p-4">
+              {/* 보증금 섹션 */}
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="[font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-base text-[#111]">보증금</h3>
+                  <span className="text-sm text-[#00E6FF] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold cursor-pointer" onClick={() => {
+                    setBudgetMin(0);
+                    setBudgetMax(25000);
+                  }}>
+                    {(() => {
+                      // 전체 범위인지 확인
+                      if (budgetMin === 0 && budgetMax === 25000) {
+                        return "전체";
+                      }
+                      
+                      // 범위 표시
+                      const formatAmount = (amount: number) => {
+                        if (amount < 10000) {
+                          return `${Math.round(amount / 1000)}천만`;
+                        } else {
+                          return `${(amount / 10000).toFixed(2)}억`;
+                        }
+                      };
+                      return `${formatAmount(budgetMin)} ~ ${formatAmount(budgetMax)}`;
+                    })()}
+                  </span>
+                </div>
+
+                {/* 보증금 Range Slider */}
+                <RangeSlider
+                  min={0}
+                  max={25000}
+                  minValue={budgetMin}
+                  maxValue={budgetMax}
+                  onMinChange={setBudgetMin}
+                  onMaxChange={setBudgetMax}
+                  onDragStart={(type) => setBudgetDragging(type)}
+                  onDragEnd={() => setBudgetDragging(null)}
+                  isDragging={budgetDragging}
+                  minGap={(48 / 308) * 25000} // 약 3896
+                  formatValue={(value) => {
+                    const suffix = budgetDragging === 'min' ? '부터' : budgetDragging === 'max' ? '까지' : '';
+                    if (value < 10000) {
+                      return `${Math.round(value / 1000)}천만${suffix}`;
+                    } else {
+                      return `${(value / 10000).toFixed(2)}억${suffix}`;
+                    }
+                  }}
+                  showDragBubble={true}
+                  handleImage="/assets/wh-icon-12_1755367755885.png"
+                />
+
+                {/* 보증금 Labels */}
+                <div className="flex justify-between text-xs text-[#777] [font-family:'SUITE-Medium',Helvetica] font-medium px-1" style={{ marginTop: '-4px' }}>
+                  <span>최소</span>
+                  <span>5천만</span>
+                  <span>2.5억</span>
+                  <span>최대</span>
+                </div>
+              </div>
+
+              {/* 임대료(월세) 섹션 */}
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="[font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-base text-[#111]">임대료(월세)</h3>
+                  <span className="text-sm text-[#00E6FF] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold cursor-pointer" onClick={() => {
+                    setDepositMin(35);
+                    setDepositMax(150);
+                  }}>
+                    {(() => {
+                      // 전체 범위인지 확인
+                      if (depositMin === 35 && depositMax === 150) {
+                        return "전체";
+                      }
+                      
+                      // 범위 표시
+                      return `${Math.round(depositMin)}만 ~ ${Math.round(depositMax)}만`;
+                    })()}
+                  </span>
+                </div>
+
+                {/* 임대료 Range Slider */}
+                <RangeSlider
+                  min={35}
+                  max={150}
+                  minValue={depositMin}
+                  maxValue={depositMax}
+                  onMinChange={setDepositMin}
+                  onMaxChange={setDepositMax}
+                  onDragStart={(type) => setDepositDragging(type)}
+                  onDragEnd={() => setDepositDragging(null)}
+                  isDragging={depositDragging}
+                  minGap={(48 / 308) * (150 - 35)} // 약 18.0
+                  formatValue={(value) => {
+                    const suffix = depositDragging === 'min' ? '부터' : depositDragging === 'max' ? '까지' : '';
+                    return `${Math.round(value)}만${suffix}`;
+                  }}
+                  showDragBubble={true}
+                  handleImage="/assets/wh-icon-12_1755367755885.png"
+                />
+
+                {/* 임대료 Labels */}
+                <div className="flex justify-between text-xs text-[#777] [font-family:'SUITE-Medium',Helvetica] font-medium px-1" style={{ marginTop: '-4px' }}>
+                  <span>최소</span>
+                  <span>150만</span>
+                  <span>500만</span>
+                  <span>최대</span>
+                </div>
+              </div>
+
+              {/* 관리비 포함하여 찾기 토글 */}
+              <div className="flex justify-between items-center mb-6">
+                <span className="[font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-base text-[#111]">관리비 포함하여 찾기</span>
+                <button
+                  onClick={() => setIncludeManagementFee(!includeManagementFee)}
+                  className={`relative inline-flex w-12 h-6 rounded-full transition-colors ${
+                    includeManagementFee ? 'bg-[#00D6F8]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block w-5 h-5 bg-white rounded-full transition-transform ${
+                      includeManagementFee ? 'translate-x-6' : 'translate-x-0.5'
+                    }`}
+                    style={{ marginTop: '2px' }}
+                  />
+                </button>
+              </div>
+
+              {/* Bottom Buttons */}
+              <div className="flex gap-3" style={{ marginTop: '24px' }}>
+                <button
+                  onClick={() => {
+                    setBudgetMin(0);
+                    setBudgetMax(25000);
+                    setDepositMin(35);
+                    setDepositMax(150);
+                    setIncludeManagementFee(true);
+                  }}
+                  className="bg-transparent text-[#444] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm hover:bg-gray-50 rounded-lg transition-colors" 
+                  style={{ flex: '0.9', paddingLeft: '19px', paddingRight: '19px', paddingTop: '11px', paddingBottom: '11px' }}
+                >
+                  초기화
+                </button>
+                <button
+                  onClick={() => {
+                    setShowBudgetSection(false);
+                  }}
+                  className="bg-[#00E6FF] text-white [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm hover:bg-[#00D6F8] rounded-lg transition-colors" 
+                  style={{ flex: '1.1', paddingLeft: '19px', paddingRight: '19px', paddingTop: '11px', paddingBottom: '11px' }}
+                >
+                  적용하기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 옵션 섹션 */}
+        {showOptionSection && (
+          <div className="absolute w-[360px] bg-white border-b border-gray-200 shadow-lg" style={{ top: '122px', left: '0px', zIndex: 15 }}>
+            <div className="p-4">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="[font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-base text-[#111]">거래유형</h3>
+              </div>
+
+              {/* 거래유형 버튼들 */}
+              <div className="flex gap-3 mb-6">
+                <button
+                  onClick={() => setSelectedCategory('전세')}
+                  className={`py-3 rounded-lg [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm transition-colors ${
+                    selectedCategory === '전세' 
+                      ? 'bg-[#00D6F8] text-white' 
+                      : 'bg-gray-100 text-[#666] hover:bg-gray-200'
+                  }`}
+                  style={{ width: '104px' }}
+                >
+                  전세
+                </button>
+                <button
+                  onClick={() => setSelectedCategory('임대(월세)')}
+                  className={`py-3 rounded-lg [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm transition-colors ${
+                    selectedCategory === '임대(월세)' 
+                      ? 'bg-[#00D6F8] text-white' 
+                      : 'bg-gray-100 text-[#666] hover:bg-gray-200'
+                  }`}
+                  style={{ width: '104px' }}
+                >
+                  임대(월세)
+                </button>
+                <button
+                  onClick={() => setSelectedCategory('매매')}
+                  className={`py-3 rounded-lg [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm transition-colors ${
+                    selectedCategory === '매매' 
+                      ? 'bg-[#00D6F8] text-white' 
+                      : 'bg-gray-100 text-[#666] hover:bg-gray-200'
+                  }`}
+                  style={{ width: '104px' }}
+                >
+                  매매
+                </button>
+              </div>
+
+              {/* 층 섹션 */}
+              <div className="mb-6">
+                <h4 className="[font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-base text-[#111] mb-3">층</h4>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedSubCategory('전체')}
+                    className={`py-3 rounded-lg [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm transition-colors ${
+                      selectedSubCategory === '전체' 
+                        ? 'bg-[#00D6F8] text-white' 
+                        : 'bg-gray-100 text-[#666] hover:bg-gray-200'
+                    }`}
+                    style={{ width: '159px' }}
+                  >
+                    전체
+                  </button>
+                  <button
+                    onClick={() => setSelectedSubCategory('1층만 보기')}
+                    className={`py-3 rounded-lg [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm transition-colors ${
+                      selectedSubCategory === '1층만 보기' 
+                        ? 'bg-[#00D6F8] text-white' 
+                        : 'bg-gray-100 text-[#666] hover:bg-gray-200'
+                    }`}
+                    style={{ width: '159px' }}
+                  >
+                    1층만 보기
+                  </button>
+                </div>
+              </div>
+
+
+
+              {/* Bottom Buttons */}
+              <div className="flex gap-3" style={{ marginTop: '24px' }}>
+                <button
+                  onClick={() => {
+                    setSelectedCategory('전체');
+                    setSelectedSubCategory('전체');
+                  }}
+                  className="bg-transparent text-[#444] [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm hover:bg-gray-50 rounded-lg transition-colors" style={{ flex: '0.9', paddingLeft: '19px', paddingRight: '19px', paddingTop: '11px', paddingBottom: '11px' }}
+                >
+                  초기화
+                </button>
+                <button
+                  onClick={() => {
+                    // Apply option filter logic here
+                    setShowOptionSection(false);
+                  }}
+                  className="bg-[#00E6FF] text-white [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold text-sm hover:bg-[#00D6F8] rounded-lg transition-colors" style={{ flex: '1.1', paddingLeft: '19px', paddingRight: '19px', paddingTop: '11px', paddingBottom: '11px' }}
+                >
+                  적용하기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

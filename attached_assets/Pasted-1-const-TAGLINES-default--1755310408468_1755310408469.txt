@@ -1,0 +1,95 @@
+1) 문구 풀(원하는 대로 추가/수정)
+const TAGLINES = {
+  default: [
+    "유동인구 많은 골목에 딱 맞는 감성 공간!",
+    "사진 맛집 각—네온 무드 확실!",
+    "이 동네 취향을 꽉 채울 포인트 스팟!",
+    "퇴근길 힐링이 필요할 때, 여기!",
+  ],
+  cafe: [
+    "바이닐 사운드 + 라떼향, 데이트 코스로 제격!",
+    "주말 회전 좋은 무드 카페 바",
+    "플레이리스트가 공간을 완성합니다",
+  ],
+  beauty: [
+    "짧고 굵게! 체험 → 정규 전환이 핵심",
+    "SNS 각 보장, 衛생·동선 설계가 관건",
+    "퇴근 후 1시간, 바로 예뻐지는 곳",
+  ],
+  hobby: [
+    "비 오는 날에도 꾸준한 실내 액티비티",
+    "초보 친화 코치 운영이 핵심!",
+    "게임 몰입 최상—이벤트 운영 추천",
+  ],
+  pet: [
+    "야간 산책러·집사 가족이 모이는 구역",
+    "셀프 케어 수요 탄탄, 예약 회전이 포인트",
+    "반려 동반 가능 상권에 딱!",
+  ],
+};
+const CAT_KEY = { "카페/음식":"cafe", "뷰티/헬스":"beauty", "취미/문화":"hobby", "키즈/반려":"pet" };
+
+2) 랜덤 선택(중복 방지 + 위치기반 시드 선택도 가능)
+// 단순 랜덤 + 바로 전 문구는 피하기
+let prevTagline = "";
+function pickTagline(catKey, seedNumber) {
+  const pool = [...TAGLINES.default, ...(TAGLINES[catKey] || [])];
+
+  // 2-A) 완전 랜덤
+  let r = Math.random();
+
+  // 2-B) 위치 기반 '고정 랜덤' 원하면 시드 사용
+  if (Number.isFinite(seedNumber)) {
+    // 간단 시드 난수(Mulberry32)
+    let t = seedNumber >>> 0;
+    const rand = () => {
+      t += 0x6D2B79F5;
+      let x = Math.imul(t ^ (t >>> 15), 1 | t);
+      x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+    r = rand();
+  }
+
+  // 중복 방지
+  let pick;
+  for (let i = 0; i < 3; i++) {
+    pick = pool[Math.floor(r * pool.length)];
+    if (pick !== prevTagline) break;
+    r = Math.random();
+  }
+  prevTagline = pick;
+  return pick;
+}
+
+3) 카드 열릴 때 적용(너의 openModal(item, ...) 안에 한 줄)
+function openModal(item, btn){
+  // ...기존 코드...
+  const catKey = CAT_KEY[item.cat] || "default";
+
+  // 위치 기반으로 고정 문구를 원하면 위경도에서 시드 생성(예시)
+  // const seed = Math.abs(Math.floor(item.lat*1000) ^ Math.floor(item.lng*1000));
+  // const line = pickTagline(catKey, seed);
+
+  const line = pickTagline(catKey); // 그냥 매번 랜덤
+  document.getElementById("tagline").textContent = line;
+
+  // ...이하 모달 오픈...
+}
+
+4) HTML에서 문구 자리만 준비
+<!-- 상세 카드 상단의 한 줄 -->
+<p id="tagline" class="tagline"></p>
+
+(선택) 스타일
+.tagline{ margin:0 0 8px; font-weight:800; color:#333; text-align:center; }
+
+운용 팁
+
+랜덤 but 일관성 필요하면 2-B처럼 위치(위경도)로 시드를 만들어 쓰면,
+같은 위치에서는 늘 같은 문구가 나오고 위치가 바뀌면 다른 문구가 나옵니다.
+
+문구가 너무 자주 바뀌면 산만할 수 있으니, 카드 클릭 시 한 번만 갱신하거나
+localStorage에 최근 문구를 저장해 세션 동안 유지해도 좋아요.
+
+원하는 톤 더 주면 문구 풀을 카테고리별로 더 풍성하게 채워서 넘겨줄게!

@@ -1,0 +1,83 @@
+이건 “히스토리 스택이 없는 상태에서 입지추천을 바로 열어서” 뒤로가기가 먹히지 않는 케이스 같아요. Replit 프리뷰가 새 탭으로 열리면 window.history.back()이 실패합니다. 이럴 땐 ‘어디서 왔는지’를 함께 넘기고, 없을 때는 카드 상세 경로로 폴백하면 해결돼요.
+
+아래 그대로 적용해보세요.
+
+1) 카드 → 입지추천으로 갈 때 “from”과 cardId를 같이 넘기기
+// CardDetail.tsx
+import { useLocation, useNavigate } from "react-router-dom";
+
+const CardDetail = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const cardId = /* 카드 id 가져오기 */;
+
+  const goRecommend = () => {
+    navigate(`/location-recommendation?cardId=${cardId}`, {
+      state: { from: location.pathname }   // ← 되돌아올 주소 저장
+    });
+  };
+
+  return (
+    <button onClick={goRecommend}>입지추천 보기</button>
+  );
+};
+
+2) 입지추천 헤더의 뒤로가기 로직(우선순위 있는 폴백)
+// LocationRecommendationPage.tsx
+import { useLocation, useNavigate } from "react-router-dom";
+
+const LocationRecommendationPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // ① 카드 상세에서 넘어올 때 저장해둔 경로
+  const from = (location.state as any)?.from as string | undefined;
+  // ② 쿼리로 받은 cardId
+  const params = new URLSearchParams(location.search);
+  const cardId = params.get("cardId");
+
+  const onBack = () => {
+    // A. 히스토리 스택이 있으면 그냥 뒤로
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    // B. from이 있으면 거기로
+    if (from) {
+      navigate(from, { replace: true });
+      return;
+    }
+    // C. cardId로 카드 상세로
+    if (cardId) {
+      navigate(`/card/${cardId}`, { replace: true });
+      return;
+    }
+    // D. 최후 폴백: 메인/목록
+    navigate("/", { replace: true });
+  };
+
+  return (
+    <header>
+      <button onClick={onBack}>←</button>
+      {/* ... */}
+    </header>
+  );
+};
+
+3) 라우팅 확인
+// App.tsx
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/card/:cardId" element={<CardDetail />} />
+  <Route path="/location-recommendation" element={<LocationRecommendationPage />} />
+</Routes>
+
+왜 이렇게 해야 하냐면
+
+Replit 미리보기처럼 직접 URL을 열면 히스토리가 1개라 back()이 동작하지 않습니다.
+
+그래서 A→B로 올 때 B에 “어디서 왔는지(from)”와 cardId를 같이 전달하고,
+
+B(입지추천)에서는 히스토리/상태/쿼리 순으로 안전하게 되돌리면 항상 원하는 곳으로 복귀합니다.
+
+이대로 넣으면 “뒤로가기 눌러도 안 넘어감” 문제가 사라질 거예요.

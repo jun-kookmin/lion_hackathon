@@ -1,0 +1,44 @@
+첫 스플래쉬 화면을 만드려고 하는데
+unicorn studio embed code 사용할거야
+
+#Include the script
+#Add the script tag to the <head> of your page
+
+<script src="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v1.4.29/dist/unicornStudio.umd.js"></script>
+import * as UnicornStudio from "./path/to/unicornStudio.umd.js";
+2. Initialize your scene:
+Any element with data-us-project will get initialized by calling UnicornStudio.init(). If you're hosting your own exported JSON file, use data-us-project-src to point to its location. You do not need both data-us-project and data-us-project-src. If you host your own JSON, remembder you'll need to update this file when you make changes to your scene in Unicorn.studio.
+
+<div
+  class="unicorn-embed"
+  data-us-project="X0VvcwaowS1sNuCJus32"
+  data-us-project-src="path/to/your/PROJECT_ID.json (if you're using this, do not use data-us-project)"
+  data-us-scale="1"
+  data-us-dpi="1.5"
+  data-us-lazyload="true"
+  data-us-alttext="Welcome to Unicorn Studio"
+  data-us-arialabel="This is a canvas scene"
+></div>
+<script>
+  UnicornStudio.init()
+    .then((scenes) => {
+      // Scenes are ready
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+</script>
+
+#Destroy all scenes:
+#If you're using UnicornStudio in a SPA with dynamic routing, make sure to destroy them on #unmount.
+
+#UnicornStudio.destroy();
+
+#React/Next
+#See this repo for a great react/next npm package.
+
+#Live example
+#https://codepen.io/georgehastings/pen/ExGrqMJ
+
+
+<div data-us-project="X0VvcwaowS1sNuCJus32" style="width:375px; height: 640px"></div><script type="text/javascript">!function(){if(!window.UnicornStudio){window.UnicornStudio={isInitialized:!1};var i=document.createElement("script");i.src="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v1.4.29/dist/unicornStudio.umd.js",i.onload=function(){window.UnicornStudio.isInitialized||(UnicornStudio.init(),window.UnicornStudio.isInitialized=!0)},(document.head || document.body).appendChild(i)}}();</script>

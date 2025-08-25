@@ -1,0 +1,337 @@
+/* Group 1000005530 */
+
+position: absolute;
+width: 120px;
+height: 150px;
+
+
+
+/* Frame 1000005508 */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+isolation: isolate;
+
+position: absolute;
+width: 120px;
+height: 150px;
+
+filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.25)) drop-shadow(0px 0px 4px #CCFF00);
+backdrop-filter: blur(7px);
+/* Note: backdrop-filter has minimal browser support */
+
+
+/* Rectangle 193541 */
+
+box-sizing: border-box;
+
+width: 120px;
+height: 38px;
+
+background: rgba(250, 87, 5, 0.8);
+border: 1px solid #FFFFFF;
+border-radius: 11.65px 11.65px 0px 0px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+margin: -1px 0px;
+z-index: 0;
+
+
+/* Rectangle 193542 */
+
+box-sizing: border-box;
+
+width: 120px;
+height: 38px;
+
+background: rgba(255, 255, 255, 0.8);
+border: 1px solid #FFFFFF;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+margin: -1px 0px;
+z-index: 1;
+
+
+/* Rectangle 193543 */
+
+box-sizing: border-box;
+
+width: 120px;
+height: 38px;
+
+background: rgba(255, 255, 255, 0.8);
+border: 1px solid #FFFFFF;
+
+/* Inside auto layout */
+flex: none;
+order: 2;
+align-self: stretch;
+flex-grow: 0;
+margin: -1px 0px;
+z-index: 2;
+
+
+/* Rectangle 193543 */
+
+box-sizing: border-box;
+
+width: 120px;
+height: 38px;
+
+background: rgba(255, 255, 255, 0.8);
+border: 1px solid #FFFFFF;
+border-radius: 0px 0px 11.65px 11.65px;
+
+/* Inside auto layout */
+flex: none;
+order: 3;
+align-self: stretch;
+flex-grow: 0;
+z-index: 3;
+
+
+/* Frame 1000005509 */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 16px;
+
+position: absolute;
+width: 20px;
+height: 128px;
+left: 12px;
+top: 11px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 4;
+flex-grow: 0;
+z-index: 4;
+
+
+/* Wine
+
+drinks, beverages, vineyard, places, locations, bars, restaurants, food, dining, commerce
+*/
+
+width: 20px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 18.74%;
+right: 18.74%;
+top: 9.38%;
+bottom: 3.12%;
+
+background: #FFFFFF;
+
+
+/* Palette
+
+paint, colors, color picker, arts, design
+*/
+
+width: 20px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 9.38%;
+right: 9.37%;
+top: 9.38%;
+bottom: 12.5%;
+
+background: #666666;
+
+
+/* MagicWand
+
+selection, wizard, games, design
+*/
+
+width: 20px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 2;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 12.5%;
+right: 3.13%;
+top: 12.5%;
+bottom: 12.5%;
+
+background: #666666;
+
+
+/* Bird
+
+*updated*, animals, pets, weather &amp; nature
+*/
+
+width: 20px;
+height: 20px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 3;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 3.13%;
+right: 6.25%;
+top: 6.25%;
+bottom: 12.5%;
+
+background: #666666;
+
+
+/* Frame 1000005507 */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 16px;
+
+position: absolute;
+width: 63.71px;
+height: 129.08px;
+
+
+
+/* 카페 / 음식 */
+
+width: 63.71px;
+height: 20px;
+
+font-family: 'SUITE';
+font-style: normal;
+font-weight: 800;
+font-size: 12px;
+line-height: 20px;
+/* identical to box height, or 167% */
+display: flex;
+align-items: center;
+
+color: #FFFFFF;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* 취미 / 문화 */
+
+width: 63.71px;
+height: 20px;
+
+font-family: 'SUITE';
+font-style: normal;
+font-weight: 800;
+font-size: 12px;
+line-height: 20px;
+/* identical to box height, or 167% */
+display: flex;
+align-items: center;
+
+color: #666666;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* 뷰티 / 헬스 */
+
+width: 63.71px;
+height: 20px;
+
+font-family: 'SUITE';
+font-style: normal;
+font-weight: 800;
+font-size: 12px;
+line-height: 20px;
+/* identical to box height, or 167% */
+display: flex;
+align-items: center;
+
+color: #666666;
+
+
+/* Inside auto layout */
+flex: none;
+order: 2;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* 키즈 / 반려 */
+
+width: 63.71px;
+height: 20px;
+
+font-family: 'SUITE';
+font-style: normal;
+font-weight: 800;
+font-size: 12px;
+line-height: 20px;
+/* identical to box height, or 167% */
+display: flex;
+align-items: center;
+
+
+/* Inside auto layout */
+flex: none;
+order: 3;
+align-self: stretch;
+flex-grow: 0;

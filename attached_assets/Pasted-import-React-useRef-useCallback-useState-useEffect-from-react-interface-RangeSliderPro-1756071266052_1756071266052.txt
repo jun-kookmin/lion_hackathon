@@ -1,0 +1,235 @@
+import React, { useRef, useCallback, useState, useEffect } from "react";
+
+interface RangeSliderProps {
+  min: number;
+  max: number;
+  minValue: number;
+  maxValue: number;
+  onMinChange: (value: number) => void;
+  onMaxChange: (value: number) => void;
+  onDragStart?: (type: 'min' | 'max') => void;
+  onDragEnd?: () => void;
+  isDragging?: 'min' | 'max' | null;
+  minGap?: number; // 최소값과 최대값 사이 최소 간격
+  formatValue?: (value: number) => string;
+  showDragBubble?: boolean;
+  className?: string;
+  trackWidth?: number; // 트랙 너비 (기본값: 308px)
+  handleImage?: string; // 핸들 이미지 경로
+}
+
+export const RangeSlider: React.FC<RangeSliderProps> = ({
+  min,
+  max,
+  minValue,
+  maxValue,
+  onMinChange,
+  onMaxChange,
+  onDragStart,
+  onDragEnd,
+  isDragging,
+  minGap = 0,
+  formatValue = (value) => value.toString(),
+  showDragBubble = true,
+  className = "",
+  trackWidth = 308,
+  handleImage = "/assets/wh-icon-12_1755367755885.png"
+}) => {
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [isMinDragging, setIsMinDragging] = useState(false);
+  const [isMaxDragging, setIsMaxDragging] = useState(false);
+  
+  const range = max - min;
+  const minPercent = ((minValue - min) / range) * 100;
+  const maxPercent = ((maxValue - min) / range) * 100;
+
+  // 픽셀을 값으로 변환
+  const pixelToValue = useCallback((pixel: number) => {
+    const percent = (pixel / trackWidth) * 100;
+    const value = min + (range * percent) / 100;
+    return Math.round(Math.max(min, Math.min(max, value)));
+  }, [min, max, range, trackWidth]);
+
+  // 클릭/드래그 핸들링
+  const handleMouseDown = useCallback((e: React.MouseEvent, type: 'min' | 'max') => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (type === 'min') {
+      setIsMinDragging(true);
+    } else {
+      setIsMaxDragging(true);
+    }
+    
+    onDragStart?.(type);
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!sliderRef.current) return;
+      
+      const rect = sliderRef.current.getBoundingClientRect();
+      const offsetX = moveEvent.clientX - rect.left;
+      const newValue = pixelToValue(offsetX);
+      
+      if (type === 'min') {
+        const constrainedValue = Math.min(newValue, maxValue - minGap);
+        onMinChange(Math.max(min, constrainedValue));
+      } else {
+        const constrainedValue = Math.max(newValue, minValue + minGap);
+        onMaxChange(Math.min(max, constrainedValue));
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsMinDragging(false);
+      setIsMaxDragging(false);
+      onDragEnd?.();
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [minValue, maxValue, min, max, minGap, pixelToValue, onMinChange, onMaxChange, onDragStart, onDragEnd]);
+
+  // 터치 이벤트 핸들링
+  const handleTouchStart = useCallback((e: React.TouchEvent, type: 'min' | 'max') => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (type === 'min') {
+      setIsMinDragging(true);
+    } else {
+      setIsMaxDragging(true);
+    }
+    
+    onDragStart?.(type);
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      if (!sliderRef.current) return;
+      
+      const rect = sliderRef.current.getBoundingClientRect();
+      const offsetX = moveEvent.touches[0].clientX - rect.left;
+      const newValue = pixelToValue(offsetX);
+      
+      if (type === 'min') {
+        const constrainedValue = Math.min(newValue, maxValue - minGap);
+        onMinChange(Math.max(min, constrainedValue));
+      } else {
+        const constrainedValue = Math.max(newValue, minValue + minGap);
+        onMaxChange(Math.min(max, constrainedValue));
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsMinDragging(false);
+      setIsMaxDragging(false);
+      onDragEnd?.();
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
+  }, [minValue, maxValue, min, max, minGap, pixelToValue, onMinChange, onMaxChange, onDragStart, onDragEnd]);
+
+  return (
+    <div className={`range-slider mb-4 ${className}`} style={{ marginTop: '24px', position: 'relative' }}>
+      {/* Track */}
+      <div 
+        ref={sliderRef}
+        className="track absolute h-1.5 bg-[#DDE3E9] rounded-full cursor-pointer" 
+        style={{ 
+          top: 'calc(50% + 4px)', 
+          transform: 'translateY(-50%)', 
+          left: '50%', 
+          marginLeft: `-${trackWidth/2}px`, 
+          width: `${trackWidth}px` 
+        }}
+        onClick={(e) => {
+          // 트랙 클릭으로 가장 가까운 핸들 이동
+          const rect = sliderRef.current!.getBoundingClientRect();
+          const offsetX = e.clientX - rect.left;
+          const clickValue = pixelToValue(offsetX);
+          
+          const minDistance = Math.abs(clickValue - minValue);
+          const maxDistance = Math.abs(clickValue - maxValue);
+          
+          if (minDistance < maxDistance) {
+            const constrainedValue = Math.min(clickValue, maxValue - minGap);
+            onMinChange(Math.max(min, constrainedValue));
+          } else {
+            const constrainedValue = Math.max(clickValue, minValue + minGap);
+            onMaxChange(Math.min(max, constrainedValue));
+          }
+        }}
+      />
+      
+      {/* Fill */}
+      <div 
+        className="fill absolute h-1.5 bg-[#CCFF00] rounded-full pointer-events-none"
+        style={{
+          top: 'calc(50% + 4px)',
+          transform: 'translateY(-50%)',
+          left: `calc(50% - ${trackWidth/2}px + ${(minPercent / 100) * trackWidth}px)`,
+          width: `${((maxPercent - minPercent) / 100) * trackWidth}px`
+        }}
+      />
+
+      {/* Min Handle - 이미지 기반 */}
+      <div 
+        className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing select-none"
+        style={{ 
+          top: 'calc(50% + 4px)',
+          left: `calc(50% - ${trackWidth/2}px + ${(minPercent / 100) * trackWidth}px)`,
+          zIndex: isMinDragging ? 30 : 20
+        }}
+        onMouseDown={(e) => handleMouseDown(e, 'min')}
+        onTouchStart={(e) => handleTouchStart(e, 'min')}
+      >
+        <img 
+          src={handleImage} 
+          alt="min slider handle" 
+          className="w-full h-full pointer-events-none" 
+          draggable={false}
+        />
+      </div>
+      
+      {/* Max Handle - 이미지 기반 */}
+      <div 
+        className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing select-none"
+        style={{ 
+          top: 'calc(50% + 4px)',
+          left: `calc(50% - ${trackWidth/2}px + ${(maxPercent / 100) * trackWidth}px)`,
+          zIndex: isMaxDragging ? 30 : 21
+        }}
+        onMouseDown={(e) => handleMouseDown(e, 'max')}
+        onTouchStart={(e) => handleTouchStart(e, 'max')}
+      >
+        <img 
+          src={handleImage} 
+          alt="max slider handle" 
+          className="w-full h-full pointer-events-none" 
+          draggable={false}
+        />
+      </div>
+
+      {/* Drag Bubbles */}
+      {showDragBubble && (isMinDragging || isDragging === 'min') && (
+        <div 
+          className="absolute bg-[#111] text-white text-xs px-2 py-1 rounded transform -translate-x-1/2 -translate-y-10 [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold pointer-events-none z-40"
+          style={{ left: `calc(50% - ${trackWidth/2}px + ${(minPercent / 100) * trackWidth}px)` }}
+        >
+          {formatValue(minValue)}
+        </div>
+      )}
+      {showDragBubble && (isMaxDragging || isDragging === 'max') && (
+        <div 
+          className="absolute bg-[#111] text-white text-xs px-2 py-1 rounded transform -translate-x-1/2 -translate-y-10 [font-family:'SUITE-ExtraBold',Helvetica] font-extrabold pointer-events-none z-40"
+          style={{ left: `calc(50% - ${trackWidth/2}px + ${(maxPercent / 100) * trackWidth}px)` }}
+        >
+          {formatValue(maxValue)}
+        </div>
+      )}
+    </div>
+  );
+};

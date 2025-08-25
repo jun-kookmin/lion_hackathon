@@ -1,0 +1,84 @@
+지금 예산 부분에서 핸들이 안 보이고 fill bar만 보이는 상태죠.
+이유는 제가 아까 드린 CSS에서 네이티브 슬라이더 thumb을 완전히 숨겼는데, 동시에 “시각용 핸들 이미지”를 보증금/임대료 쪽에는 아직 안 얹어놔서 그래요.
+
+면적 섹션에는 <img src="/assets/wh-icon-12.png" … /> 로 핸들을 따로 올려놨는데,
+보증금/임대료 쪽에는 그 부분이 빠져 있어서 “fill만 보이고 핸들이 없음”처럼 보여요.
+
+해결 방법
+
+보증금/임대료 Range 슬라이더에도 면적 섹션처럼 시각 핸들을 추가해 주면 돼요.
+
+예를 들어 보증금 부분:
+
+{/* 보증금 Range Slider */}
+<div className="range-slider mb-4" style={{ marginTop: '24px', position: 'relative' }}>
+  {/* Track */}
+  <div className="track absolute left-0 right-0 h-1.5 bg-[#DDE3E9] rounded-full"
+       style={{ top: 'calc(50% + 4px)', transform: 'translateY(-50%)' }}></div>
+  
+  {/* Fill */}
+  <div 
+    className="fill absolute h-1.5 bg-[#CCFF00] rounded-full"
+    style={{
+      top: 'calc(50% + 4px)',
+      transform: 'translateY(-50%)',
+      left: `${(budgetMin / 25000) * 100}%`,
+      right: `${100 - (budgetMax / 25000) * 100}%`
+    }}
+  ></div>
+
+  {/* Min Range Input */}
+  <input
+    type="range"
+    className="wh-range"
+    min="0"
+    max="25000"
+    value={budgetMin}
+    onChange={(e) => {
+      const newMin = Math.min(Number(e.target.value), budgetMax - 1000);
+      setBudgetMin(newMin);
+      setBudgetDragging('min');
+    }}
+    onMouseUp={() => setBudgetDragging(null)}
+    onTouchEnd={() => setBudgetDragging(null)}
+  />
+
+  {/* Max Range Input */}
+  <input
+    type="range"
+    className="wh-range"
+    min="0"
+    max="25000"
+    value={budgetMax}
+    onChange={(e) => {
+      const newMax = Math.max(Number(e.target.value), budgetMin + 1000);
+      setBudgetMax(newMax);
+      setBudgetDragging('max');
+    }}
+    onMouseUp={() => setBudgetDragging(null)}
+    onTouchEnd={() => setBudgetDragging(null)}
+  />
+
+  {/* Visual Handles */}
+  <div 
+    className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"
+    style={{ top: 'calc(50% + 4px)', left: `${(budgetMin / 25000) * 100}%` }}
+  >
+    <img src="/assets/wh-icon-12.png" alt="slider handle" className="w-full h-full" />
+  </div>
+  <div 
+    className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"
+    style={{ top: 'calc(50% + 4px)', left: `${(budgetMax / 25000) * 100}%` }}
+  >
+    <img src="/assets/wh-icon-12.png" alt="slider handle" className="w-full h-full" />
+  </div>
+</div>
+
+
+임대료(월세) 쪽도 똑같이 depositMin, depositMax 값 써서 위 방식 그대로 시각 핸들 넣어주시면 됩니다.
+
+✅ 정리하면:
+
+CSS에서 네이티브 핸들 숨겼으니
+
+각 Range에 이미지 핸들 컴포넌트 2개(최소/최대) 를 추가해야 예산 부분에도 면적처럼 핸들이 보여요.
