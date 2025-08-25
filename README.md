@@ -22,7 +22,7 @@
   - 바텀시트 카드 ↔ 지도 간 **양방향 연동 UI** 제공  
 
 - **층/필터 선택**  
-  - B2/B1/1F/2F 층수 필터 적용 가능  
+  - B2/B1/1F/2F 층수 필터 적용 가능 (현재는 1층만 선택 or 전체)
 
 - **추천 사유 및 LLM 설명**  
   - `api/services/llm_openai.py` 모듈이 OpenAI API 호출  
@@ -105,7 +105,7 @@ pip install -r requirements.txt
 
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
-DATABASE_URL=postgres://user:pass@localhost:5432/lion
+DATABASE_URL=defalt DB 동작 
 
 
 DB 마이그레이션 & 시드
