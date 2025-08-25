@@ -4,6 +4,8 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
+
+  base: '/',
   plugins: [
     react(),
     runtimeErrorOverlay(),
@@ -35,9 +37,8 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000", // 해당 부분에 아이피 또는 키값 맞추는 것 주의해주세요!
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        // keep the path as-is (e.g., /api/v1/...)
       },
     },
   },
